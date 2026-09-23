@@ -1,0 +1,16 @@
+{
+  "name": "adshield-server",
+  "version": "1.0.0",
+  "description": "AdShield Private Backend, Admin Dashboard, and Public Product Portal",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node tests/server.test.js"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0"
+  },
+  "private": true
+}

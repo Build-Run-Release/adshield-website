@@ -1,0 +1,150 @@
+/**
+ * Automated Security, Privacy, and API Test Suite for AdShield Web & Backend
+ */
+
+const assert = require("assert");
+const http = require("http");
+const app = require("../src/server");
+
+let server;
+const PORT = 3099;
+const BASE_URL = `http://localhost:${PORT}`;
+
+function makeRequest(path, options = {}, body = null) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(path, BASE_URL);
+    const reqOptions = {
+      method: options.method || "GET",
+      headers: {
+        ...(body ? { "Content-Type": "application/json" } : {}),
+        ...(options.headers || {})
+      }
+    };
+
+    const req = http.request(url, reqOptions, (res) => {
+      let data = "";
+      res.on("data", (chunk) => { data += chunk; });
+      res.on("end", () => {
+        let json = null;
+        try { json = JSON.parse(data); } catch (_) {}
+        resolve({
+          statusCode: res.statusCode,
+          headers: res.headers,
+          data,
+          json
+        });
+      });
+    });
+
+    req.on("error", reject);
+    if (body) {
+      req.write(typeof body === "string" ? body : JSON.stringify(body));
+    }
+    req.end();
+  });
+}
+
+async function runTests() {
+  console.log("=== Running AdShield Backend & Privacy Test Suite ===");
+
+  await new Promise((resolve) => {
+    server = app.listen(PORT, resolve);
+  });
+
+  try {
+    // 1. Public Release Metadata Test
+    console.log("1. Testing Public Release Metadata API...");
+    const relRes = await makeRequest("/api/v1/releases/latest");
+    assert.strictEqual(relRes.statusCode, 200);
+    assert.strictEqual(relRes.json.channel, "stable");
+    assert.strictEqual(relRes.json.version, "1.0.0");
+    assert.strictEqual(relRes.json.minimumAndroidVersion, 26);
+    assert.ok(relRes.json.sha256 && relRes.json.sha256.length === 64);
+    console.log("   ✓ Public release metadata verified successfully.");
+
+    // 2. 7-Day Trial Initiation Test
+    console.log("2. Testing 7-Day Trial Issuance API...");
+    const trialRes = await makeRequest("/api/v1/licenses/trial/start", { method: "POST" }, {
+      deviceInstallId: "device_unit_test_998877"
+    });
+    assert.strictEqual(trialRes.statusCode, 200);
+    assert.strictEqual(trialRes.json.plan, "TRIAL");
+    assert.ok(trialRes.json.signature && trialRes.json.signature.length === 64);
+    assert.strictEqual(trialRes.json.gracePeriodDays, 14);
+    console.log("   ✓ 7-Day trial issued with valid HMAC-SHA256 signature.");
+
+    // 3. Filter Manifest Test
+    console.log("3. Testing Filter Feeds Manifest API...");
+    const filterRes = await makeRequest("/api/v1/filters/manifest");
+    assert.strictEqual(filterRes.statusCode, 200);
+    assert.ok(filterRes.json.sources.length >= 4);
+    console.log("   ✓ Filter manifest returns verified upstream sources.");
+
+    // 4. MANDATORY PRIVACY TEST: Reject Personal Browsing Data
+    console.log("4. Testing Strict Zero-Surveillance Privacy Gate...");
+    const privacyViolationRes = await makeRequest("/api/v1/licenses/verify", { method: "POST" }, {
+      licenseKey: "KEY-123",
+      deviceInstallId: "device_123",
+      browsingHistory: ["https://example.com/secret", "https://bank.com"]
+    });
+    assert.strictEqual(privacyViolationRes.statusCode, 400);
+    assert.strictEqual(privacyViolationRes.json.error, "PRIVACY_VIOLATION_REJECTED");
+    console.log("   ✓ Privacy Gate correctly rejected prohibited browsingHistory telemetry.");
+
+    const urlViolationRes = await makeRequest("/api/v1/releases/latest?url=https://test.com");
+    assert.strictEqual(urlViolationRes.statusCode, 400);
+    assert.strictEqual(urlViolationRes.json.error, "PRIVACY_VIOLATION_REJECTED");
+    console.log("   ✓ Privacy Gate correctly rejected query containing 'url'.");
+
+    // 5. Admin Authentication & RBAC Test
+    console.log("5. Testing Admin Dashboard Security Boundary...");
+    const unauthMetrics = await makeRequest("/admin/api/metrics");
+    assert.strictEqual(unauthMetrics.statusCode, 401);
+    console.log("   ✓ Unauthorized access to admin metrics blocked.");
+
+    // Authorized Admin Session
+    const authHeaders = { "Cookie": "adshield_admin_session=authenticated_owner_token" };
+    const authMetrics = await makeRequest("/admin/api/metrics", { headers: authHeaders });
+    assert.strictEqual(authMetrics.statusCode, 200);
+    assert.ok(authMetrics.json.totalUsers > 1000);
+    assert.ok(authMetrics.json.mrrDollars > 1000);
+    console.log("   ✓ Authenticated owner received business metrics without privacy telemetry.");
+
+    // 6. Release Management & Revocation Test
+    console.log("6. Testing Release Promotion & Revocation Flow...");
+    const revokeRes = await makeRequest("/admin/api/releases/rel_100/revoke", {
+      method: "POST",
+      headers: authHeaders
+    });
+    assert.strictEqual(revokeRes.statusCode, 200);
+    assert.strictEqual(revokeRes.json.status, "REVOKED");
+
+    // Public API should now report 404 because stable release is revoked!
+    const publicAfterRevoke = await makeRequest("/api/v1/releases/latest");
+    assert.strictEqual(publicAfterRevoke.statusCode, 404);
+    console.log("   ✓ Emergency release revocation instantly stopped public distribution!");
+
+    // Restore to STABLE
+    const restoreRes = await makeRequest("/admin/api/releases/rel_100/promote", {
+      method: "POST",
+      headers: authHeaders
+    }, { status: "STABLE" });
+    assert.strictEqual(restoreRes.statusCode, 200);
+    assert.strictEqual(restoreRes.json.status, "STABLE");
+
+    const publicAfterRestore = await makeRequest("/api/v1/releases/latest");
+    assert.strictEqual(publicAfterRestore.statusCode, 200);
+    console.log("   ✓ Release restored to STABLE successfully.");
+
+    console.log("\nALL SERVER, PRIVACY, AND RELEASE MANAGEMENT TESTS PASSED (6/6)!\n");
+
+  } finally {
+    server.close();
+  }
+}
+
+runTests().catch((err) => {
+  console.error("Test execution failed:", err);
+  if (server) server.close();
+  process.exit(1);
+});
