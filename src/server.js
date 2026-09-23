@@ -292,6 +292,10 @@ app.get("/download/:file", (req, res) => {
   if (fs.existsSync(publicApk)) {
     return res.download(publicApk, fileName);
   }
+  // High-speed CDN fallback for serverless deployments (Vercel / AWS Lambda)
+  if (fileName.toLowerCase().includes("adshield")) {
+    return res.redirect("https://github.com/Build-Run-Release/adshield-website/releases/download/v1.0.0/AdShield-v1.0.0.apk");
+  }
   // Check build outputs directly
   const buildApk = path.join(__dirname, "../../app/build/outputs/apk/release/app-release.apk");
   if (fs.existsSync(buildApk)) {
