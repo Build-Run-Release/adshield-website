@@ -114,10 +114,14 @@ app.get("/", (req, res) => {
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; max-width: 1100px; margin: auto; padding: 0 8% 60px; }
     .feature-card { background: var(--card); padding: 28px; border-radius: 14px; border: 1px solid rgba(148,163,184,0.15); box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
     .feature-card h3 { margin-top: 0; color: var(--primary); font-size: 20px; }
-    .pricing-table { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; max-width: 900px; margin: auto; padding: 0 8% 80px; }
-    .price-card { background: var(--card); border: 2px solid rgba(148,163,184,0.2); border-radius: 14px; padding: 32px; text-align: center; position: relative; }
+    .pricing-table { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 20px; max-width: 1140px; margin: auto; padding: 0 8% 30px; }
+    .price-card { background: var(--card); border: 2px solid rgba(148,163,184,0.2); border-radius: 14px; padding: 26px 18px; text-align: center; position: relative; display: flex; flex-direction: column; justify-content: space-between; }
     .price-card.featured { border-color: #005ac1; box-shadow: 0 8px 30px rgba(0,90,193,0.15); }
-    .price { font-size: 38px; font-weight: 800; margin: 16px 0 8px; color: var(--primary); }
+    .price-card.student { border-color: #10b981; box-shadow: 0 8px 30px rgba(16,185,129,0.15); }
+    .price { font-size: 34px; font-weight: 800; margin: 12px 0 4px; color: var(--primary); }
+    .price-features { list-style: none; padding: 0; margin: 16px 0; text-align: left; font-size: 13px; color: #64748b; }
+    .price-features li { margin-bottom: 8px; padding-left: 18px; position: relative; }
+    .price-features li::before { content: "✓"; position: absolute; left: 0; color: #10b981; font-weight: bold; }
     .footer { background: var(--card); border-top: 1px solid rgba(148,163,184,0.2); padding: 40px 8%; text-align: center; font-size: 14px; color: #64748b; }
     .footer a { color: #64748b; margin: 0 10px; text-decoration: none; }
   </style>
@@ -174,28 +178,90 @@ app.get("/", (req, res) => {
     </div>
   </div>
 
-  <h2 style="text-align:center; font-size:32px; margin-bottom:12px;">Simple, Transparent Licensing</h2>
-  <p style="text-align:center; color:#64748b; margin-bottom:40px;">Every installation begins with a 7-day full premium trial. No card required upfront.</p>
+  <h2 style="text-align:center; font-size:32px; margin-bottom:8px;">Affordable, Student-Friendly Pricing</h2>
+  <p style="text-align:center; color:#64748b; margin-bottom:20px;">Protect your Android device and save mobile data without breaking the bank. Every install begins with a 7-day free trial.</p>
+
+  <div style="text-align:center; max-width:820px; margin:0 auto 36px; padding:0 8%;">
+    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:12px; padding:12px 18px; color:#1e40af; font-size:14px; display:inline-block;">
+      📱 <strong>Save Money on Mobile Data:</strong> By blocking intrusive ad videos, auto-playing popups, and hidden tracking scripts, AdShield can save up to <strong>35% of your mobile internet data</strong> every month!
+    </div>
+  </div>
 
   <div id="pricing" class="pricing-table">
     <div class="price-card">
-      <h3>7-Day Free Trial</h3>
-      <div class="price">$0</div>
-      <p>Full premium features unlocked automatically on installation.</p>
-      <a href="/download" class="btn" style="width:80%; margin-top:20px;">Start Free Trial</a>
+      <div>
+        <h3>7-Day Free Trial</h3>
+        <div class="price">₦0</div>
+        <p style="font-size:13px; color:#64748b; margin-bottom:12px;">Full premium access. No bank card or email required upfront.</p>
+        <ul class="price-features">
+          <li>100% full feature trial</li>
+          <li>System-wide ad & tracker blocking</li>
+          <li>Dangerous link & scam interception</li>
+          <li>Local sandboxed quarantine</li>
+        </ul>
+      </div>
+      <a href="/download" class="btn" style="width:100%; box-sizing:border-box; margin-top:16px;">Start Free Trial</a>
     </div>
+
+    <div class="price-card student">
+      <div>
+        <div style="background:#10b981; color:white; font-size:11px; font-weight:bold; padding:4px 10px; border-radius:20px; display:inline-block; margin-bottom:8px;">🎓 STUDENT SPECIAL</div>
+        <h3>Student Plan</h3>
+        <div class="price">₦500<span style="font-size:14px; font-weight:normal; color:#64748b;">/mo</span></div>
+        <div style="font-size:12px; color:#10b981; font-weight:600; margin-bottom:12px;">or ₦2,500/year (saves 58%)</div>
+        <ul class="price-features">
+          <li>Affordable campus pricing</li>
+          <li>Saves mobile data bundles</li>
+          <li>Blocks aggressive campus Wi-Fi popups</li>
+          <li>Low RAM & battery optimized</li>
+        </ul>
+      </div>
+      <a href="/download" class="btn" style="background:#10b981; width:100%; box-sizing:border-box; margin-top:16px;">Get Student Plan</a>
+    </div>
+
     <div class="price-card featured">
-      <div style="background:#005ac1; color:white; font-size:11px; font-weight:bold; padding:4px 10px; border-radius:20px; display:inline-block; margin-bottom:8px;">MOST POPULAR</div>
-      <h3>Yearly Plan</h3>
-      <div class="price">$19.99<span style="font-size:14px; font-weight:normal; color:#64748b;">/year</span></div>
-      <p>Save 45% with continuous filter intelligence and priority updates.</p>
-      <a href="/download" class="btn" style="width:80%; margin-top:20px;">Select Yearly</a>
+      <div>
+        <div style="background:#005ac1; color:white; font-size:11px; font-weight:bold; padding:4px 10px; border-radius:20px; display:inline-block; margin-bottom:8px;">⭐ MOST POPULAR</div>
+        <h3>Yearly Plan</h3>
+        <div class="price">₦4,500<span style="font-size:14px; font-weight:normal; color:#64748b;">/year</span></div>
+        <div style="font-size:12px; color:#005ac1; font-weight:600; margin-bottom:12px;">Only ~₦375 per month</div>
+        <ul class="price-features">
+          <li>Continuous threat intelligence feeds</li>
+          <li>Banking overlay malware defense</li>
+          <li>Dangerous APK inspector</li>
+          <li>Priority customer support</li>
+        </ul>
+      </div>
+      <a href="/download" class="btn" style="width:100%; box-sizing:border-box; margin-top:16px;">Select Yearly</a>
     </div>
+
     <div class="price-card">
-      <h3>Lifetime License</h3>
-      <div class="price">$49.99<span style="font-size:14px; font-weight:normal; color:#64748b;"> once</span></div>
-      <p>One-time purchase for the lifetime of the product under applicable license terms.*</p>
-      <a href="/download" class="btn btn-outline" style="width:80%; margin-top:20px;">Get Lifetime</a>
+      <div>
+        <div style="background:#0284c7; color:white; font-size:11px; font-weight:bold; padding:4px 10px; border-radius:20px; display:inline-block; margin-bottom:8px;">💎 ONE-TIME</div>
+        <h3>Lifetime License</h3>
+        <div class="price">₦9,500<span style="font-size:14px; font-weight:normal; color:#64748b;"> once</span></div>
+        <div style="font-size:12px; color:#64748b; font-weight:600; margin-bottom:12px;">Zero recurring deductions</div>
+        <ul class="price-features">
+          <li>One-time payment for life*</li>
+          <li>Permanent application updates</li>
+          <li>Never worry about monthly debits</li>
+          <li>Zero-surveillance privacy forever</li>
+        </ul>
+      </div>
+      <a href="/download" class="btn btn-outline" style="width:100%; box-sizing:border-box; margin-top:16px; margin-left:0;">Get Lifetime</a>
+    </div>
+  </div>
+
+  <div style="max-width:860px; margin:auto; padding:0 8% 30px; text-align:center;">
+    <div style="background:var(--card); border:1px solid rgba(148,163,184,0.25); border-radius:12px; padding:16px 20px; display:inline-flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap; font-size:13.5px; color:#64748b;">
+      <span style="font-weight:600; color:var(--text);">💳 Supported Nigerian Payment Options:</span>
+      <span>Bank Transfer</span>
+      <span>•</span>
+      <span>USSD</span>
+      <span>•</span>
+      <span>OPay & PalmPay</span>
+      <span>•</span>
+      <span>Verve, Mastercard & Visa</span>
     </div>
   </div>
 
