@@ -97,7 +97,7 @@ async function runTests() {
     console.log("   ✓ Privacy Gate correctly rejected query containing 'url'.");
 
     // 5. Admin Authentication & RBAC Test
-    console.log("5. Testing Admin Dashboard Security Boundary...");
+    console.log("5. Testing Admin Dashboard Security Boundary & Active Applications Telemetry...");
     const unauthMetrics = await makeRequest("/admin/api/metrics");
     assert.strictEqual(unauthMetrics.statusCode, 401);
     console.log("   ✓ Unauthorized access to admin metrics blocked.");
@@ -106,12 +106,36 @@ async function runTests() {
     const authHeaders = { "Cookie": "adshield_admin_session=authenticated_owner_token" };
     const authMetrics = await makeRequest("/admin/api/metrics", { headers: authHeaders });
     assert.strictEqual(authMetrics.statusCode, 200);
-    assert.ok(authMetrics.json.totalUsers > 1000);
-    assert.ok(authMetrics.json.mrrDollars > 1000);
-    console.log("   ✓ Authenticated owner received business metrics without privacy telemetry.");
+    assert.ok(authMetrics.json.totalUsers >= 1);
+    console.log("   ✓ Authenticated owner received active applications telemetry without surveillance data.");
 
-    // 6. Release Management & Revocation Test
-    console.log("6. Testing Release Promotion & Revocation Flow...");
+    // 6. Paystack Subscription Payment API Test
+    console.log("6. Testing Paystack Subscription Initialization & Verification...");
+    const initPaystackRes = await makeRequest("/api/v1/licenses/paystack/initialize", { method: "POST" }, {
+      plan: "MONTHLY",
+      deviceInstallId: "device_test_paystack_device_01",
+      email: "student@lagos.edu.ng"
+    });
+    assert.strictEqual(initPaystackRes.statusCode, 200);
+    assert.strictEqual(initPaystackRes.json.data.amountNaira, 1200);
+    assert.strictEqual(initPaystackRes.json.data.amountKobo, 120000);
+    assert.ok(initPaystackRes.json.data.reference.startsWith("adshield_monthly_"));
+    console.log("   ✓ Paystack transaction initialized successfully (₦1,200 Monthly).");
+
+    const verifyPaystackRes = await makeRequest("/api/v1/licenses/paystack/verify", { method: "POST" }, {
+      reference: initPaystackRes.json.data.reference,
+      deviceInstallId: "device_test_paystack_device_01",
+      plan: "MONTHLY",
+      appVersion: "1.0.0"
+    });
+    assert.strictEqual(verifyPaystackRes.statusCode, 200);
+    assert.strictEqual(verifyPaystackRes.json.data.plan, "MONTHLY");
+    assert.ok(verifyPaystackRes.json.data.licenseKey.startsWith("PSK-MONTHLY-"));
+    assert.ok(verifyPaystackRes.json.data.signature.length === 64);
+    console.log("   ✓ Paystack payment verified and active license activated locally.");
+
+    // 7. Release Management & Revocation Test
+    console.log("7. Testing Release Promotion & Revocation Flow...");
     const revokeRes = await makeRequest("/admin/api/releases/rel_100/revoke", {
       method: "POST",
       headers: authHeaders
@@ -136,7 +160,7 @@ async function runTests() {
     assert.strictEqual(publicAfterRestore.statusCode, 200);
     console.log("   ✓ Release restored to STABLE successfully.");
 
-    console.log("\nALL SERVER, PRIVACY, AND RELEASE MANAGEMENT TESTS PASSED (6/6)!\n");
+    console.log("\nALL SERVER, PRIVACY, PAYSTACK, AND TELEMETRY TESTS PASSED (7/7)!\n");
 
   } finally {
     server.close();

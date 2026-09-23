@@ -114,14 +114,47 @@ app.get("/", (req, res) => {
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; max-width: 1100px; margin: auto; padding: 0 8% 60px; }
     .feature-card { background: var(--card); padding: 28px; border-radius: 14px; border: 1px solid rgba(148,163,184,0.15); box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
     .feature-card h3 { margin-top: 0; color: var(--primary); font-size: 20px; }
-    .pricing-table { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 20px; max-width: 1140px; margin: auto; padding: 0 8% 30px; }
-    .price-card { background: var(--card); border: 2px solid rgba(148,163,184,0.2); border-radius: 14px; padding: 26px 18px; text-align: center; position: relative; display: flex; flex-direction: column; justify-content: space-between; }
-    .price-card.featured { border-color: #005ac1; box-shadow: 0 8px 30px rgba(0,90,193,0.15); }
-    .price-card.student { border-color: #10b981; box-shadow: 0 8px 30px rgba(16,185,129,0.15); }
-    .price { font-size: 34px; font-weight: 800; margin: 12px 0 4px; color: var(--primary); }
-    .price-features { list-style: none; padding: 0; margin: 16px 0; text-align: left; font-size: 13px; color: #64748b; }
-    .price-features li { margin-bottom: 8px; padding-left: 18px; position: relative; }
+    .pricing-table { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; max-width: 1100px; margin: auto; padding: 0 6% 36px; align-items: stretch; }
+    .price-card { background: var(--card); border: 1.5px solid rgba(148,163,184,0.25); border-radius: 16px; padding: 28px 22px; text-align: center; position: relative; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 4px 20px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; }
+    .price-card:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,0.12); }
+    .price-card.featured { border: 2px solid #005ac1; box-shadow: 0 8px 32px rgba(0,90,193,0.18); }
+    @media (prefers-color-scheme: dark) {
+      .price-card.featured { border-color: #38bdf8; box-shadow: 0 8px 32px rgba(56,189,248,0.2); }
+    }
+    .badge-slot { height: 32px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+    .card-badge { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; padding: 5px 12px; border-radius: 20px; display: inline-block; }
+    .badge-featured { background: #005ac1; color: #ffffff; }
+    @media (prefers-color-scheme: dark) { .badge-featured { background: #0284c7; } }
+    .badge-lifetime { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.35); }
+    .badge-monthly { background: rgba(148,163,184,0.12); color: #64748b; border: 1px solid rgba(148,163,184,0.25); }
+    @media (prefers-color-scheme: dark) { .badge-monthly { color: #94a3b8; } }
+    .price-card h3 { font-size: 22px; font-weight: 700; margin: 0 0 10px 0; }
+    .price-header { min-height: 78px; display: flex; flex-direction: column; justify-content: center; margin-bottom: 16px; }
+    .price-val { font-size: 38px; font-weight: 800; line-height: 1.1; color: var(--primary); }
+    .price-period { font-size: 15px; font-weight: 500; color: #64748b; }
+    .price-subnote { font-size: 12.5px; color: #64748b; margin-top: 4px; font-weight: 500; }
+    .price-features { list-style: none; padding: 0; margin: 16px 0 24px; text-align: left; font-size: 13.5px; color: var(--text); flex-grow: 1; }
+    .price-features li { margin-bottom: 10px; padding-left: 22px; position: relative; line-height: 1.4; }
     .price-features li::before { content: "✓"; position: absolute; left: 0; color: #10b981; font-weight: bold; }
+    .btn-plan { display: block; width: 100%; box-sizing: border-box; text-align: center; padding: 13px 20px; border-radius: 10px; font-size: 15px; font-weight: 700; text-decoration: none; transition: all 0.2s; border: none; cursor: pointer; }
+    .btn-primary-plan { background: #005ac1; color: #ffffff !important; }
+    .btn-primary-plan:hover { background: #004291; }
+    @media (prefers-color-scheme: dark) {
+      .btn-primary-plan { background: #0284c7; }
+      .btn-primary-plan:hover { background: #0369a1; }
+    }
+    .btn-secondary-plan { background: #eff6ff; color: #005ac1 !important; border: 1.5px solid #bfdbfe; }
+    .btn-secondary-plan:hover { background: #dbeafe; }
+    @media (prefers-color-scheme: dark) {
+      .btn-secondary-plan { background: #1e293b; color: #38bdf8 !important; border: 1.5px solid #334155; }
+      .btn-secondary-plan:hover { background: #334155; }
+    }
+    .btn-lifetime-plan { background: #0f766e; color: #ffffff !important; }
+    .btn-lifetime-plan:hover { background: #115e59; }
+    @media (prefers-color-scheme: dark) {
+      .btn-lifetime-plan { background: #059669; color: #ffffff !important; }
+      .btn-lifetime-plan:hover { background: #10b981; }
+    }
     .footer { background: var(--card); border-top: 1px solid rgba(148,163,184,0.2); padding: 40px 8%; text-align: center; font-size: 14px; color: #64748b; }
     .footer a { color: #64748b; margin: 0 10px; text-decoration: none; }
   </style>
@@ -179,82 +212,88 @@ app.get("/", (req, res) => {
   </div>
 
   <h2 style="text-align:center; font-size:32px; margin-bottom:8px;">Affordable, Student-Friendly Pricing</h2>
-  <p style="text-align:center; color:#64748b; margin-bottom:20px;">Protect your Android device and save mobile data without breaking the bank. Every install begins with a 7-day free trial.</p>
+  <p style="text-align:center; color:#64748b; margin-bottom:20px;">Protect your Android device and save mobile data without breaking the bank. Pay securely via Paystack.</p>
 
-  <div style="text-align:center; max-width:820px; margin:0 auto 36px; padding:0 8%;">
-    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:12px; padding:12px 18px; color:#1e40af; font-size:14px; display:inline-block;">
-      📱 <strong>Save Money on Mobile Data:</strong> By blocking intrusive ad videos, auto-playing popups, and hidden tracking scripts, AdShield can save up to <strong>35% of your mobile internet data</strong> every month!
+  <div style="text-align:center; max-width:820px; margin:0 auto 28px; padding:0 6%;">
+    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:12px; padding:14px 20px; color:#1e40af; font-size:14.5px; display:inline-block; margin-bottom:12px;">
+      🎉 <strong>Automatic 7-Day Free Trial:</strong> Every app install begins with 7 days of full premium protection without entering payment info upfront.
+    </div>
+    <div style="background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3); border-radius:12px; padding:12px 18px; color:#065f46; font-size:13.5px; display:inline-block;">
+      📱 <strong>Save Money on Mobile Data:</strong> By blocking intrusive video ads, popups, and tracker scripts, AdShield saves up to <strong>35% of your mobile internet data</strong> every month!
     </div>
   </div>
 
   <div id="pricing" class="pricing-table">
+    <!-- Card 1: Monthly Plan -->
     <div class="price-card">
       <div>
-        <h3>7-Day Free Trial</h3>
-        <div class="price">₦0</div>
-        <p style="font-size:13px; color:#64748b; margin-bottom:12px;">Full premium access. No bank card or email required upfront.</p>
+        <div class="badge-slot">
+          <span class="card-badge badge-monthly">FLEXIBLE · MONTH-TO-MONTH</span>
+        </div>
+        <h3>Monthly Plan</h3>
+        <div class="price-header">
+          <div class="price-val">₦1,200<span class="price-period">/mo</span></div>
+          <div class="price-subnote">Billed monthly · Cancel anytime</div>
+        </div>
         <ul class="price-features">
-          <li>100% full feature trial</li>
-          <li>System-wide ad & tracker blocking</li>
+          <li>Full system-wide ad & tracker blocking</li>
           <li>Dangerous link & scam interception</li>
-          <li>Local sandboxed quarantine</li>
+          <li>Save up to 35% of mobile data bundles</li>
+          <li>Includes 7-day free trial on install</li>
+          <li>Low RAM & battery optimized engine</li>
         </ul>
       </div>
-      <a href="/download" class="btn" style="width:100%; box-sizing:border-box; margin-top:16px;">Start Free Trial</a>
+      <a href="/download" class="btn-plan btn-secondary-plan">Get Monthly Plan</a>
     </div>
 
-    <div class="price-card student">
-      <div>
-        <div style="background:#10b981; color:white; font-size:11px; font-weight:bold; padding:4px 10px; border-radius:20px; display:inline-block; margin-bottom:8px;">🎓 STUDENT SPECIAL</div>
-        <h3>Student Plan</h3>
-        <div class="price">₦500<span style="font-size:14px; font-weight:normal; color:#64748b;">/mo</span></div>
-        <div style="font-size:12px; color:#10b981; font-weight:600; margin-bottom:12px;">or ₦2,500/year (saves 58%)</div>
-        <ul class="price-features">
-          <li>Affordable campus pricing</li>
-          <li>Saves mobile data bundles</li>
-          <li>Blocks aggressive campus Wi-Fi popups</li>
-          <li>Low RAM & battery optimized</li>
-        </ul>
-      </div>
-      <a href="/download" class="btn" style="background:#10b981; width:100%; box-sizing:border-box; margin-top:16px;">Get Student Plan</a>
-    </div>
-
+    <!-- Card 2: Yearly Plan (Featured) -->
     <div class="price-card featured">
       <div>
-        <div style="background:#005ac1; color:white; font-size:11px; font-weight:bold; padding:4px 10px; border-radius:20px; display:inline-block; margin-bottom:8px;">⭐ MOST POPULAR</div>
+        <div class="badge-slot">
+          <span class="card-badge badge-featured">⭐ MOST POPULAR · SAVE 41%</span>
+        </div>
         <h3>Yearly Plan</h3>
-        <div class="price">₦4,500<span style="font-size:14px; font-weight:normal; color:#64748b;">/year</span></div>
-        <div style="font-size:12px; color:#005ac1; font-weight:600; margin-bottom:12px;">Only ~₦375 per month</div>
+        <div class="price-header">
+          <div class="price-val">₦8,500<span class="price-period">/year</span></div>
+          <div class="price-subnote">Only ~₦708 per month</div>
+        </div>
         <ul class="price-features">
+          <li>Everything in Monthly Plan</li>
           <li>Continuous threat intelligence feeds</li>
           <li>Banking overlay malware defense</li>
           <li>Dangerous APK inspector</li>
-          <li>Priority customer support</li>
+          <li>Priority customer support & rule sync</li>
         </ul>
       </div>
-      <a href="/download" class="btn" style="width:100%; box-sizing:border-box; margin-top:16px;">Select Yearly</a>
+      <a href="/download" class="btn-plan btn-primary-plan">Select Yearly (Best Value)</a>
     </div>
 
+    <!-- Card 3: Lifetime License -->
     <div class="price-card">
       <div>
-        <div style="background:#0284c7; color:white; font-size:11px; font-weight:bold; padding:4px 10px; border-radius:20px; display:inline-block; margin-bottom:8px;">💎 ONE-TIME</div>
+        <div class="badge-slot">
+          <span class="card-badge badge-lifetime">💎 ONE-TIME PURCHASE</span>
+        </div>
         <h3>Lifetime License</h3>
-        <div class="price">₦9,500<span style="font-size:14px; font-weight:normal; color:#64748b;"> once</span></div>
-        <div style="font-size:12px; color:#64748b; font-weight:600; margin-bottom:12px;">Zero recurring deductions</div>
+        <div class="price-header">
+          <div class="price-val">₦18,000<span class="price-period"> once</span></div>
+          <div class="price-subnote">Zero recurring debits ever</div>
+        </div>
         <ul class="price-features">
-          <li>One-time payment for life*</li>
-          <li>Permanent application updates</li>
-          <li>Never worry about monthly debits</li>
-          <li>Zero-surveillance privacy forever</li>
+          <li>One-time payment for lifetime protection*</li>
+          <li>Permanent application & security updates</li>
+          <li>Never worry about monthly deductions</li>
+          <li>Zero-surveillance privacy guarantee</li>
+          <li>Transferable to new Android devices</li>
         </ul>
       </div>
-      <a href="/download" class="btn btn-outline" style="width:100%; box-sizing:border-box; margin-top:16px; margin-left:0;">Get Lifetime</a>
+      <a href="/download" class="btn-plan btn-lifetime-plan">Get Lifetime License</a>
     </div>
   </div>
 
   <div style="max-width:860px; margin:auto; padding:0 8% 30px; text-align:center;">
     <div style="background:var(--card); border:1px solid rgba(148,163,184,0.25); border-radius:12px; padding:16px 20px; display:inline-flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap; font-size:13.5px; color:#64748b;">
-      <span style="font-weight:600; color:var(--text);">💳 Supported Nigerian Payment Options:</span>
+      <span style="font-weight:600; color:var(--text);">💳 Supported Nigerian Payment Options (via Paystack):</span>
       <span>Bank Transfer</span>
       <span>•</span>
       <span>USSD</span>

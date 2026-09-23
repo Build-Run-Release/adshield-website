@@ -5,7 +5,7 @@
  */
 
 const { releaseStore } = require("../api/releases");
-const { businessMetrics } = require("../api/licensing");
+const { businessMetrics, activeAppsStore } = require("../api/licensing");
 const { FILTER_SOURCES_MANIFEST } = require("../api/filters");
 
 const ADMIN_CREDENTIALS = {
@@ -112,8 +112,10 @@ function adminRouter(express) {
   });
 
   // Protected Admin Dashboard: GET /admin
+  // Protected Admin Dashboard: GET /admin
   router.get("/", requireAdmin, (req, res) => {
     const releases = releaseStore.getAllReleases();
+    const activeMetrics = activeAppsStore.getActiveMetrics();
     res.send(`
 <!DOCTYPE html>
 <html lang="en">
@@ -142,7 +144,7 @@ function adminRouter(express) {
   <div class="header">
     <div>
       <h1 style="margin:0; font-size:24px;">AdShield Owner Dashboard</h1>
-      <span class="badge">PRIVATE INFRASTRUCTURE</span>
+      <span class="badge">ACTIVE APPLICATIONS TELEMETRY</span>
     </div>
     <form method="POST" action="/admin/logout">
       <button class="btn btn-danger" type="submit">Sign Out</button>
@@ -150,34 +152,64 @@ function adminRouter(express) {
   </div>
 
   <div class="privacy-notice">
-    <strong>Zero-Surveillance Guarantee Active:</strong> This private dashboard only displays aggregate business metrics, licensing entitlements, and release metadata. User browsing logs, visited URLs, and personal DNS queries are strictly prohibited and never transmitted to or held in this system.
+    <strong>Active Application Telemetry Active:</strong> This private dashboard only displays real active application installations, local protection state, and cryptographic licensing entitlements. User browsing logs, visited URLs, and personal DNS queries are strictly prohibited and never transmitted to or held in this system.
   </div>
 
-  <h2>Product & Financial Run Rate</h2>
+  <h2>Active Applications & Protection Status</h2>
   <div class="grid">
     <div class="card">
-      <div class="metric-sub">MONTHLY RECURRING REVENUE (MRR)</div>
-      <div class="metric-val">$${businessMetrics.mrrDollars.toFixed(2)}</div>
-      <div class="metric-sub">ARR: $${businessMetrics.arrDollars.toFixed(2)}</div>
+      <div class="metric-sub">TOTAL ACTIVE APPLICATIONS</div>
+      <div class="metric-val">${activeMetrics.totalActiveApps}</div>
+      <div class="metric-sub">Installed & registered client devices</div>
     </div>
     <div class="card">
-      <div class="metric-sub">ACTIVE SUBSCRIBERS</div>
-      <div class="metric-val">${businessMetrics.monthlySubscribers + businessMetrics.yearlySubscribers}</div>
-      <div class="metric-sub">${businessMetrics.monthlySubscribers} Monthly · ${businessMetrics.yearlySubscribers} Yearly</div>
+      <div class="metric-sub">ACTIVE PROTECTION ENGINES</div>
+      <div class="metric-val" style="color: #4ade80;">${activeMetrics.activeProtectionEngines}</div>
+      <div class="metric-sub">Devices actively filtering DNS & threats</div>
+    </div>
+    <div class="card">
+      <div class="metric-sub">ACTIVE SUBSCRIBERS (PAYSTACK)</div>
+      <div class="metric-val">${activeMetrics.monthlySubscribers + activeMetrics.yearlySubscribers + activeMetrics.lifetimeLicenses}</div>
+      <div class="metric-sub">${activeMetrics.monthlySubscribers} Monthly · ${activeMetrics.yearlySubscribers} Yearly · ${activeMetrics.lifetimeLicenses} Lifetime</div>
     </div>
     <div class="card">
       <div class="metric-sub">ACTIVE 7-DAY TRIALS</div>
-      <div class="metric-val">${businessMetrics.activeTrials}</div>
-      <div class="metric-sub">Free trial conversion: 38.4%</div>
-    </div>
-    <div class="card">
-      <div class="metric-sub">LIFETIME LICENSES</div>
-      <div class="metric-val">${businessMetrics.lifetimeLicenses}</div>
-      <div class="metric-sub">Total Revenue: $${businessMetrics.totalRevenueDollars.toFixed(2)}</div>
+      <div class="metric-val">${activeMetrics.activeTrials}</div>
+      <div class="metric-sub">Active free trial devices</div>
     </div>
   </div>
 
-  <h2>Application Release Lifecycle Manager</h2>
+  <h2>Live Registered Active Applications (${activeMetrics.totalActiveApps})</h2>
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>Device Install ID</th>
+          <th>Plan</th>
+          <th>App Version</th>
+          <th>Protection Status</th>
+          <th>Activated</th>
+          <th>Last Check-In</th>
+          <th>License Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${activeMetrics.appsList.map(a => `
+          <tr>
+            <td><code>${a.deviceInstallId.substring(0, 20)}...</code></td>
+            <td><span class="badge">${a.plan}</span></td>
+            <td><strong>v${a.appVersion || '1.0.0'}</strong></td>
+            <td><span style="color:#4ade80; font-weight:600;">● Active Shielding</span></td>
+            <td>${new Date(a.activatedAt).toLocaleDateString()}</td>
+            <td>${new Date(a.lastSeenAt).toLocaleTimeString()}</td>
+            <td><span style="color: ${a.status.includes('TRIAL') ? '#38bdf8' : '#4ade80'}; font-weight:bold;">${a.status}</span></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 style="margin-top:28px;">Application Release Lifecycle Manager</h2>
   <div class="card">
     <table>
       <thead>
