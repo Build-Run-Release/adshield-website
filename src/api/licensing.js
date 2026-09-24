@@ -195,15 +195,19 @@ function licensingApiRouter(express) {
     let plan = "MONTHLY";
     let durationMs = 30 * 24 * 60 * 60 * 1000;
 
-    if (licenseKey.startsWith("YEAR")) {
+    const upperKey = licenseKey.toUpperCase();
+    if (upperKey.includes("YEAR")) {
       plan = "YEARLY";
       durationMs = 365 * 24 * 60 * 60 * 1000;
-    } else if (licenseKey.startsWith("LIFE")) {
+    } else if (upperKey.includes("LIFE")) {
       plan = "LIFETIME";
       durationMs = 253402300799000 - now;
-    } else if (licenseKey.startsWith("TRIAL")) {
+    } else if (upperKey.includes("TRIAL")) {
       plan = "TRIAL";
       durationMs = TRIAL_DURATION_MS;
+    } else {
+      plan = "MONTHLY";
+      durationMs = 30 * 24 * 60 * 60 * 1000;
     }
 
     const expiresAt = now + durationMs;

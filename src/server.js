@@ -675,14 +675,23 @@ const handleCheckout = (req, res) => {
       <h2 style="color:#10b981; margin:0;">Payment Confirmed!</h2>
       <p style="color:#64748b; font-size:15px; margin:8px 0 16px;">Your Paystack transaction was completed successfully.</p>
       
-      <div style="text-align:left; background:var(--bg); border:1px solid rgba(148,163,184,0.25); border-radius:12px; padding:16px; margin:20px 0;">
+      <div style="text-align:left; background:var(--bg); border:1.5px solid rgba(0,90,193,0.3); border-radius:12px; padding:18px; margin:20px 0;">
         <div style="font-size:12px; color:#64748b;">TRANSACTION REFERENCE:</div>
         <div class="code-box" id="resRef">...</div>
-        <div style="font-size:12px; color:#64748b; margin-top:8px;">ACTIVATED LICENSE KEY:</div>
-        <div class="code-box" id="resKey" style="color:var(--primary); font-weight:bold;">...</div>
+        <div style="font-size:12px; color:#64748b; margin-top:10px;">MASTER LICENSE RECOVERY KEY (SAVE THIS NOW):</div>
+        <div class="code-box" id="resKey" style="color:var(--primary); font-weight:bold; font-size:16px;">...</div>
+        <div style="font-size:12px; color:#d97706; margin-top:8px; line-height:1.4;">
+          ⚠️ <strong>Shown only once:</strong> Keep this key safe like crypto account recovery words. If you switch devices or reinstall AdShield, paste this key into the app to restore your subscription.
+        </div>
       </div>
 
-      <p style="font-size:14px; color:#64748b;">Switch back to your <strong>AdShield app</strong> and tap <strong>Verify & Activate</strong> or paste your reference to enjoy full Pro protection!</p>
+      <div style="display:flex; gap:10px; margin-bottom:12px;">
+        <button type="button" class="btn-pay" style="flex:1; padding:12px; font-size:14px; background:#005ac1;" onclick="copyLicenseKey()">Copy Key 📋</button>
+        <button type="button" class="btn-pay" style="flex:1; padding:12px; font-size:14px; background:#0f766e;" onclick="downloadLicenseFile()">Save Backup (.txt) 💾</button>
+      </div>
+      <button type="button" class="btn-pay" style="width:100%; padding:12px; font-size:14px; background:#475569; margin-bottom:16px;" onclick="emailLicenseKey()">Send Key to My Email ✉️</button>
+
+      <p style="font-size:14px; color:#64748b;">Switch back to your <strong>AdShield app</strong> and tap <strong>Verify & Activate</strong> or redeem your recovery key in Account & Licensing!</p>
       <a href="intent://#Intent;package=com.adshield.android;end" class="btn-pay" style="text-decoration:none;">Open AdShield App</a>
     </div>
   </div>
@@ -781,6 +790,58 @@ const handleCheckout = (req, res) => {
       });
 
       handler.openIframe();
+    }
+
+    function copyLicenseKey() {
+      const key = document.getElementById("resKey").innerText;
+      navigator.clipboard.writeText(key).then(() => {
+        alert("License Recovery Key copied to clipboard! Save it safely.");
+      }).catch(() => {
+        alert("Recovery Key: " + key);
+      });
+    }
+
+    function downloadLicenseFile() {
+      const key = document.getElementById("resKey").innerText;
+      const plan = document.getElementById("planSelect").value;
+      const ref = document.getElementById("resRef").innerText;
+      const text = "ADSHIELD PRO — MASTER LICENSE RECOVERY BACKUP\n" +
+                   "============================================\n\n" +
+                   "License Recovery Key: " + key + "\n" +
+                   "Subscription Plan:    " + plan + "\n" +
+                   "Payment Reference:    " + ref + "\n" +
+                   "Issued Date:          " + new Date().toISOString() + "\n\n" +
+                   "HOW TO RESTORE ON A NEW DEVICE:\n" +
+                   "1. Install AdShield for Android\n" +
+                   "2. Open Settings > Account & Licensing\n" +
+                   "3. Paste your License Recovery Key under 'Redeem License Key / Reference'\n" +
+                   "4. Tap 'Activate License' — all shields will instantly engage.\n\n" +
+                   "SECURITY NOTICE:\n" +
+                   "AdShield operates on strict zero-surveillance principles. We do not store\n" +
+                   "browsing logs or your key on centralized servers. Keep this file safe.\n";
+      const blob = new Blob([text], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "AdShield-" + plan + "-License-" + key.substring(0, 15) + ".txt";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function emailLicenseKey() {
+      const email = document.getElementById("customerEmail").value.trim();
+      const key = document.getElementById("resKey").innerText;
+      const plan = document.getElementById("planSelect").value;
+      const subject = encodeURIComponent("My AdShield Pro License Recovery Key");
+      const body = encodeURIComponent(
+        "AdShield Pro License Key Backup\n\n" +
+        "Plan: " + plan + "\n" +
+        "Recovery Key: " + key + "\n\n" +
+        "Save this email. If you change your phone or reset device storage, enter this key in the AdShield app under 'Redeem License Key' to restore your subscription as long as it has not expired."
+      );
+      window.location.href = "mailto:" + email + "?subject=" + subject + "&body=" + body;
     }
   </script>
 </body>
