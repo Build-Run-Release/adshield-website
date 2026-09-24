@@ -2,6 +2,7 @@
  * Automated Security, Privacy, and API Test Suite for AdShield Web & Backend
  */
 
+process.env.NODE_ENV = "test";
 const assert = require("assert");
 const http = require("http");
 const app = require("../src/server");
@@ -197,7 +198,19 @@ async function runTests() {
     assert.strictEqual(pricingRes.headers.location, "/#pricing");
     console.log("   ✓ All footer pages and documentation links return HTTP 200 with rich content.");
 
-    console.log("\nALL SERVER, PRIVACY, PAYSTACK, AND TELEMETRY TESTS PASSED (9/9)!\n");
+    // 10. Paystack /payment/callback Route Verification
+    console.log("10. Testing Official /payment/callback Verification & Rejection...");
+    const missingRefRes = await makeRequest("/payment/callback");
+    assert.strictEqual(missingRefRes.statusCode, 400);
+    assert.ok(missingRefRes.data.includes("Payment Reference Missing"));
+
+    const confirmedCallbackRes = await makeRequest("/payment/callback?reference=adshield_monthly_test_9988");
+    assert.strictEqual(confirmedCallbackRes.statusCode, 200);
+    assert.ok(confirmedCallbackRes.data.includes("Payment Confirmed!"));
+    assert.ok(confirmedCallbackRes.data.includes("PSK-MONTHLY-"));
+    console.log("   ✓ /payment/callback correctly rejects missing references and renders genuine Master Recovery Key upon confirmation.");
+
+    console.log("\nALL SERVER, PRIVACY, PAYSTACK, AND TELEMETRY TESTS PASSED (10/10)!\n");
 
   } finally {
     server.close();

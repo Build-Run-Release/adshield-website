@@ -16,7 +16,7 @@ const path = require("path");
 const fs = require("fs");
 
 const { releaseStore, releaseApiRouter } = require("./api/releases");
-const { licensingApiRouter, PAYSTACK_PLANS, PAYSTACK_PUBLIC_KEY } = require("./api/licensing");
+const { licensingApiRouter, PAYSTACK_PLANS, PAYSTACK_PUBLIC_KEY, initializePaystackPayment, verifyPaystackPayment } = require("./api/licensing");
 const { filtersApiRouter } = require("./api/filters");
 const { adminRouter } = require("./admin/adminRouter");
 
@@ -244,7 +244,7 @@ app.get("/", (req, res) => {
           <li>Low RAM & battery optimized engine</li>
         </ul>
       </div>
-      <a href="/download" class="btn-plan btn-secondary-plan">Get Monthly Plan</a>
+      <a href="/checkout?plan=MONTHLY" class="btn-plan btn-secondary-plan">Get Monthly Plan</a>
     </div>
 
     <!-- Card 2: Yearly Plan (Featured) -->
@@ -266,7 +266,7 @@ app.get("/", (req, res) => {
           <li>Priority customer support & rule sync</li>
         </ul>
       </div>
-      <a href="/download" class="btn-plan btn-primary-plan">Select Yearly (Best Value)</a>
+      <a href="/checkout?plan=YEARLY" class="btn-plan btn-primary-plan">Select Yearly (Best Value)</a>
     </div>
 
     <!-- Card 3: Lifetime License -->
@@ -288,7 +288,7 @@ app.get("/", (req, res) => {
           <li>Transferable to new Android devices</li>
         </ul>
       </div>
-      <a href="/download" class="btn-plan btn-lifetime-plan">Get Lifetime License</a>
+      <a href="/checkout?plan=LIFETIME" class="btn-plan btn-lifetime-plan">Get Lifetime License</a>
     </div>
   </div>
 
@@ -562,23 +562,21 @@ app.get("/pricing", (req, res) => {
 });
 
 // --- Public Paystack Web Checkout Portal: GET /checkout & GET /pay ---
+// --- Public Paystack Web Checkout Portal: GET /checkout & GET /pay ---
 const handleCheckout = (req, res) => {
   const planQuery = (req.query.plan || "MONTHLY").toUpperCase();
   const selectedPlanKey = PAYSTACK_PLANS[planQuery] ? planQuery : "MONTHLY";
   const planData = PAYSTACK_PLANS[selectedPlanKey];
-
-  const activeKey = req.query.key || PAYSTACK_PUBLIC_KEY;
   const userEmail = req.query.email || "";
-  const initialRef = req.query.ref || `adshield_${selectedPlanKey.toLowerCase()}_${Date.now()}`;
-  const isLive = activeKey.startsWith("pk_live_");
+  const errorMessage = req.query.error ? decodeURIComponent(req.query.error) : null;
 
   res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Paystack Checkout — AdShield Pro</title>
+  <title>Paystack Secure Checkout — AdShield Pro</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://js.paystack.co/v1/inline.js"></script>
+  <meta name="description" content="Secure payment for AdShield Android Pro subscription via Paystack.">
   <style>
     :root { --primary: #005ac1; --primary-dark: #004291; --bg: #f8fafc; --text: #0f172a; --card: #ffffff; }
     @media (prefers-color-scheme: dark) {
@@ -599,13 +597,10 @@ const handleCheckout = (req, res) => {
     .form-control { width: 100%; box-sizing: border-box; padding: 12px 14px; border: 1.5px solid rgba(148,163,184,0.3); border-radius: 10px; font-size: 15px; background: var(--bg); color: var(--text); }
     .btn-pay { display: block; width: 100%; box-sizing: border-box; background: #005ac1; color: white; border: none; padding: 16px; border-radius: 12px; font-size: 17px; font-weight: 700; cursor: pointer; transition: 0.2s; text-align: center; }
     .btn-pay:hover { background: #004291; }
+    .btn-pay:disabled { opacity: 0.6; cursor: not-allowed; }
     .channels-bar { font-size: 12px; color: #64748b; margin-top: 14px; text-align: center; line-height: 1.5; }
-    .key-badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; display: inline-block; }
-    .key-live { background: #dcfce7; color: #166534; }
-    .key-test { background: #fef9c3; color: #854d0e; }
-    .success-panel { display: none; text-align: center; padding: 20px 0; }
-    .success-icon { font-size: 54px; margin-bottom: 12px; }
-    .code-box { background: rgba(148,163,184,0.15); padding: 12px; border-radius: 8px; font-family: monospace; font-size: 14px; margin: 16px 0; word-break: break-all; }
+    .alert-error { background: #fef2f2; border: 1px solid #f87171; color: #991b1b; padding: 12px; border-radius: 8px; font-size: 13.5px; margin-bottom: 16px; }
+    .security-note { font-size: 11.5px; color: #64748b; text-align: center; margin-top: 16px; line-height: 1.4; }
   </style>
 </head>
 <body>
@@ -623,78 +618,58 @@ const handleCheckout = (req, res) => {
       <div class="paystack-header">
         <div>
           <h2 style="margin:0; font-size:22px;">Paystack Checkout</h2>
-          <div style="font-size:13px; color:#64748b; margin-top:2px;">Secured Payment for AdShield Pro</div>
+          <div style="font-size:13px; color:#64748b; margin-top:2px;">Official Hosted Payment Gateway</div>
         </div>
-        <span class="gateway-badge">PAYSTACK 🔒</span>
+        <span class="gateway-badge">PAYSTACK HOSTED 🔒</span>
       </div>
+
+      ${errorMessage ? `<div class="alert-error">⚠️ ${errorMessage}</div>` : ''}
 
       <div class="plan-box">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <strong id="planNameDisplay">${planData.name}</strong>
-          <span class="key-badge key-live" id="modeBadge">SECURE CHECKOUT 🔒</span>
+          <span style="background:#dcfce7; color:#166534; font-size:11px; font-weight:700; padding:3px 8px; border-radius:4px;">VERIFIED PRICING 🇳🇬</span>
         </div>
         <div class="price" id="planPriceDisplay">₦${planData.amountNaira.toLocaleString()}</div>
         <div style="font-size:12.5px; color:#64748b;" id="planDescDisplay">${selectedPlanKey === 'LIFETIME' ? 'One-time payment · Lifetime Pro Protection' : 'Renews automatically · Cancel anytime'}</div>
       </div>
 
-      <div class="form-group">
-        <label for="planSelect">Selected Subscription Tier</label>
-        <select id="planSelect" class="form-control" onchange="updatePlanSelection()">
-          <option value="MONTHLY" ${selectedPlanKey === 'MONTHLY' ? 'selected' : ''}>Monthly Plan — ₦1,200 / month</option>
-          <option value="YEARLY" ${selectedPlanKey === 'YEARLY' ? 'selected' : ''}>Yearly Plan — ₦8,500 / year (Save 41%)</option>
-          <option value="LIFETIME" ${selectedPlanKey === 'LIFETIME' ? 'selected' : ''}>Lifetime License — ₦18,000 once</option>
-        </select>
-      </div>
+      <form id="checkoutForm" method="POST" action="/checkout/initialize">
+        <div class="form-group">
+          <label for="planSelect">Selected Subscription Tier</label>
+          <select id="planSelect" name="plan" class="form-control" onchange="updatePlanSelection()">
+            <option value="MONTHLY" ${selectedPlanKey === 'MONTHLY' ? 'selected' : ''}>Monthly Plan — ₦1,200 / month</option>
+            <option value="YEARLY" ${selectedPlanKey === 'YEARLY' ? 'selected' : ''}>Yearly Plan — ₦8,500 / year (Save 41%)</option>
+            <option value="LIFETIME" ${selectedPlanKey === 'LIFETIME' ? 'selected' : ''}>Lifetime License — ₦18,000 once</option>
+          </select>
+        </div>
 
-      <div class="form-group">
-        <label for="customerEmail">Receipt Email Address</label>
-        <input type="email" id="customerEmail" class="form-control" placeholder="your.email@example.com" value="${userEmail}">
-      </div>
+        <div class="form-group">
+          <label for="customerEmail">Receipt Email Address</label>
+          <input type="email" id="customerEmail" name="email" class="form-control" required placeholder="your.email@example.com" value="${userEmail}">
+        </div>
 
-      <input type="hidden" id="publicKeyInput" value="${activeKey}">
-
-      <input type="hidden" id="txRef" value="${initialRef}">
-
-      <button type="button" class="btn-pay" id="payButton" onclick="initiatePaystack()">Pay ₦${planData.amountNaira.toLocaleString()} with Paystack</button>
+        <button type="submit" class="btn-pay" id="payButton">
+          Proceed to Paystack Payment Page 🚀
+        </button>
+      </form>
 
       <div class="channels-bar">
-        💳 <strong>Supported Nigerian Payment Methods:</strong><br/>
+        💳 <strong>Supported Nigerian Payment Channels on Paystack:</strong><br/>
         Bank Transfer • OPay & PalmPay • USSD (*737#, *919#) • Verve, Mastercard & Visa
       </div>
-    </div>
 
-    <!-- Success Confirmation State -->
-    <div class="checkout-card success-panel" id="successCard">
-      <div class="success-icon">🎉</div>
-      <h2 style="color:#10b981; margin:0;">Payment Confirmed!</h2>
-      <p style="color:#64748b; font-size:15px; margin:8px 0 16px;">Your Paystack transaction was completed successfully.</p>
-      
-      <div style="text-align:left; background:var(--bg); border:1.5px solid rgba(0,90,193,0.3); border-radius:12px; padding:18px; margin:20px 0;">
-        <div style="font-size:12px; color:#64748b;">TRANSACTION REFERENCE:</div>
-        <div class="code-box" id="resRef">...</div>
-        <div style="font-size:12px; color:#64748b; margin-top:10px;">MASTER LICENSE RECOVERY KEY (SAVE THIS NOW):</div>
-        <div class="code-box" id="resKey" style="color:var(--primary); font-weight:bold; font-size:16px;">...</div>
-        <div style="font-size:12px; color:#d97706; margin-top:8px; line-height:1.4;">
-          ⚠️ <strong>Shown only once:</strong> Keep this key safe like crypto account recovery words. If you switch devices or reinstall AdShield, paste this key into the app to restore your subscription.
-        </div>
+      <div class="security-note">
+        🔒 You will be redirected directly to Paystack's official secure payment page (<code>checkout.paystack.com</code>). No API keys or debit card credentials are ever exposed or stored.
       </div>
-
-      <div style="display:flex; gap:10px; margin-bottom:12px;">
-        <button type="button" class="btn-pay" style="flex:1; padding:12px; font-size:14px; background:#005ac1;" onclick="copyLicenseKey()">Copy Key 📋</button>
-        <button type="button" class="btn-pay" style="flex:1; padding:12px; font-size:14px; background:#0f766e;" onclick="downloadLicenseFile()">Save Backup (.txt) 💾</button>
-      </div>
-      <button type="button" class="btn-pay" style="width:100%; padding:12px; font-size:14px; background:#475569; margin-bottom:16px;" onclick="emailLicenseKey()">Send Key to My Email ✉️</button>
-
-      <p style="font-size:14px; color:#64748b;">Switch back to your <strong>AdShield app</strong> and tap <strong>Verify & Activate</strong> or redeem your recovery key in Account & Licensing!</p>
-      <a href="intent://#Intent;package=com.adshield.android;end" class="btn-pay" style="text-decoration:none;">Open AdShield App</a>
     </div>
   </div>
 
   <script>
     const PLANS = {
-      MONTHLY: { name: "Monthly Plan", amountNaira: 1200, amountKobo: 120000, desc: "Renews monthly · Cancel anytime" },
-      YEARLY: { name: "Yearly Plan", amountNaira: 8500, amountKobo: 850000, desc: "~₦708/mo · Save 41% · All shields active" },
-      LIFETIME: { name: "Lifetime License", amountNaira: 18000, amountKobo: 1800000, desc: "One-time purchase · Lifetime protection" }
+      MONTHLY: { name: "Monthly Plan", amountNaira: 1200, desc: "Renews monthly · Cancel anytime" },
+      YEARLY: { name: "Yearly Plan", amountNaira: 8500, desc: "~₦708/mo · Save 41% · All shields active" },
+      LIFETIME: { name: "Lifetime License", amountNaira: 18000, desc: "One-time purchase · Lifetime protection" }
     };
 
     function updatePlanSelection() {
@@ -703,148 +678,265 @@ const handleCheckout = (req, res) => {
       document.getElementById("planNameDisplay").innerText = data.name;
       document.getElementById("planPriceDisplay").innerText = "₦" + data.amountNaira.toLocaleString();
       document.getElementById("planDescDisplay").innerText = data.desc;
-      document.getElementById("payButton").innerText = "Pay ₦" + data.amountNaira.toLocaleString() + " with Paystack";
     }
 
-    function updateKeyMode() {
-      const keyEl = document.getElementById("publicKeyInput");
-      const badge = document.getElementById("modeBadge");
-      if (!badge || !keyEl) return;
-      const key = keyEl.value.trim();
-      if (key.startsWith("pk_live_")) {
-        badge.innerText = "SECURE CHECKOUT 🔒";
-        badge.className = "key-badge key-live";
-      } else {
-        badge.innerText = "TEST 🟡";
-        badge.className = "key-badge key-test";
-      }
+    document.getElementById("checkoutForm").addEventListener("submit", function() {
+      const btn = document.getElementById("payButton");
+      btn.disabled = true;
+      btn.innerText = "Opening Paystack Secure Checkout... ⏳";
+    });
+  </script>
+</body>
+</html>`);
+};
+
+app.get("/checkout", handleCheckout);
+app.get("/pay", handleCheckout);
+
+// Form POST handler for Web Checkout: redirects straight to Paystack Hosted Payment Page
+app.post("/checkout/initialize", async (req, res) => {
+  const { plan, email } = req.body;
+  const host = req.get("host") || "adshield-website.vercel.app";
+  const protocol = req.protocol === "https" || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
+  const callbackUrl = `${protocol}://${host}/payment/callback`;
+
+  try {
+    const data = await initializePaystackPayment({
+      plan: plan || "MONTHLY",
+      email: email,
+      deviceInstallId: `device_web_${Date.now()}`,
+      callbackUrl
+    });
+
+    if (data.authorizationUrl) {
+      return res.redirect(data.authorizationUrl);
+    } else {
+      return res.redirect(`/checkout?error=${encodeURIComponent("Could not obtain Paystack authorization URL.")}`);
     }
+  } catch (err) {
+    return res.redirect(`/checkout?error=${encodeURIComponent(err.message)}`);
+  }
+});
 
-    function initiatePaystack() {
-      const email = document.getElementById("customerEmail").value.trim();
-      const key = document.getElementById("publicKeyInput").value.trim();
-      const plan = document.getElementById("planSelect").value;
-      const planData = PLANS[plan];
-      const ref = document.getElementById("txRef").value;
+// --- Official Paystack Payment Callback & Verification Route: GET /payment/callback ---
+app.get("/payment/callback", async (req, res) => {
+  const reference = req.query.reference || req.query.trxref;
+  if (!reference) {
+    return res.status(400).send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Payment Callback — Missing Reference</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; padding: 40px 16px; text-align: center; }
+    .card { max-width: 500px; margin: auto; background: white; padding: 32px; border-radius: 16px; border: 1.5px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+    .btn { display: inline-block; background: #005ac1; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2 style="color:#dc2626;">Payment Reference Missing</h2>
+    <p>No Paystack transaction reference was provided in the callback request.</p>
+    <a href="/checkout" class="btn">Return to Checkout</a>
+  </div>
+</body>
+</html>
+    `);
+  }
 
-      if (!email || !email.includes("@")) {
-        alert("Please enter a valid email address to receive your payment receipt.");
-        return;
-      }
+  const result = await verifyPaystackPayment({
+    reference,
+    deviceInstallId: `device_web_${reference.substring(0, 10)}`
+  });
 
-      if (!key) {
-        alert("Please provide a valid Paystack Public Key.");
-        return;
-      }
-
-      const handler = PaystackPop.setup({
-        key: key,
-        email: email,
-        amount: planData.amountKobo,
-        currency: "NGN",
-        ref: ref,
-        channels: ["card", "bank", "ussd", "qr", "mobile_money", "bank_transfer"],
-        metadata: {
-          custom_fields: [
-            { display_name: "Plan", variable_name: "plan", value: plan },
-            { display_name: "Product", variable_name: "product", value: "AdShield Android" }
-          ]
-        },
-        callback: function(response) {
-          // Verify with AdShield backend
-          fetch("/api/v1/licenses/paystack/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              reference: response.reference,
-              deviceInstallId: "device_paystack_web_" + response.reference.substring(0, 10),
-              plan: plan,
-              appVersion: "1.0.0"
-            })
-          })
-          .then(res => res.json())
-          .then(data => {
-            document.getElementById("paymentCard").style.display = "none";
-            document.getElementById("successCard").style.display = "block";
-            document.getElementById("resRef").innerText = response.reference;
-            if (data.data && data.data.licenseKey) {
-              document.getElementById("resKey").innerText = data.data.licenseKey;
-            } else {
-              document.getElementById("resKey").innerText = "PSK-" + plan + "-PRO";
-            }
-          })
-          .catch(() => {
-            document.getElementById("paymentCard").style.display = "none";
-            document.getElementById("successCard").style.display = "block";
-            document.getElementById("resRef").innerText = response.reference;
-            document.getElementById("resKey").innerText = "PSK-" + plan + "-PRO";
-          });
-        },
-        onClose: function() {
-          // User closed checkout popup
-        }
-      });
-
-      handler.openIframe();
+  if (!result.success) {
+    // REAL VERIFICATION FAILED: Paystack did NOT confirm payment. Issue zero license!
+    return res.status(result.statusCode || 400).send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Payment Verification Failed — AdShield</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root { --primary: #005ac1; --bg: #f8fafc; --text: #0f172a; --card: #ffffff; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0b1120; --text: #f8fafc; --card: #131d35; --primary: #38bdf8; }
     }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; line-height: 1.6; }
+    .nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 8%; background: var(--card); border-bottom: 1px solid rgba(148,163,184,0.2); }
+    .logo { font-size: 22px; font-weight: 800; color: var(--primary); text-decoration: none; }
+    .container { max-width: 560px; margin: 40px auto; padding: 0 16px; }
+    .card { background: var(--card); border: 1.5px solid rgba(148,163,184,0.25); border-radius: 18px; padding: 32px 28px; text-align: center; box-shadow: 0 8px 30px rgba(0,0,0,0.06); }
+    .icon { font-size: 50px; margin-bottom: 12px; }
+    .meta-box { background: rgba(148,163,184,0.08); border-radius: 10px; padding: 16px; text-align: left; font-size: 13.5px; margin: 20px 0; }
+    .btn { display: block; width: 100%; box-sizing: border-box; background: #005ac1; color: white; padding: 14px; border-radius: 10px; font-weight: 700; text-decoration: none; margin-top: 12px; }
+    .btn:hover { background: #004291; }
+    .alert { background: #fee2e2; border: 1px solid #ef4444; color: #991b1b; padding: 14px; border-radius: 10px; font-size: 13.5px; margin-bottom: 20px; text-align: left; }
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <a href="/" class="logo">AdShield</a>
+  </div>
+  <div class="container">
+    <div class="card">
+      <div class="icon">⚠️</div>
+      <h2 style="color:#dc2626; margin:0;">Payment Unconfirmed</h2>
+      <p style="color:#64748b; font-size:15px; margin:8px 0 16px;">Paystack did not confirm a successful transaction for this payment.</p>
+      
+      <div class="alert">
+        <strong>🔒 Zero Mocking Policy:</strong> No license code has been generated. To protect users and prevent unauthorized access, AdShield licenses are only issued when Paystack confirms that the required funds were deposited.
+      </div>
 
-    function copyLicenseKey() {
-      const key = document.getElementById("resKey").innerText;
-      navigator.clipboard.writeText(key).then(() => {
+      <div class="meta-box">
+        <div style="margin-bottom:6px;"><strong>Reference:</strong> <code style="font-family:monospace;">${reference}</code></div>
+        <div style="margin-bottom:6px;"><strong>Status:</strong> ${result.error || 'UNCONFIRMED'}</div>
+        <div><strong>Details:</strong> ${result.message || 'Payment verification could not be validated with Paystack.'}</div>
+      </div>
+
+      <a href="/checkout" class="btn">Try Checkout Again</a>
+      <a href="/" style="display:block; margin-top:14px; color:#64748b; text-decoration:none; font-size:14px;">Return to Home Overview</a>
+    </div>
+  </div>
+</body>
+</html>
+    `);
+  }
+
+  // REAL VERIFICATION SUCCEEDED: Paystack confirmed payment!
+  res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Payment Confirmed — AdShield Master Recovery Key</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root { --primary: #005ac1; --bg: #f8fafc; --text: #0f172a; --card: #ffffff; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0b1120; --text: #f8fafc; --card: #131d35; --primary: #38bdf8; }
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; line-height: 1.6; }
+    .nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 8%; background: var(--card); border-bottom: 1px solid rgba(148,163,184,0.2); }
+    .logo { font-size: 22px; font-weight: 800; color: var(--primary); text-decoration: none; }
+    .container { max-width: 580px; margin: 40px auto; padding: 0 16px; }
+    .card { background: var(--card); border: 1.5px solid rgba(148,163,184,0.25); border-radius: 18px; padding: 34px 28px; text-align: center; box-shadow: 0 8px 30px rgba(0,0,0,0.06); }
+    .icon { font-size: 52px; margin-bottom: 12px; }
+    .badge { background: #dcfce7; color: #166534; font-size: 12px; font-weight: 800; padding: 4px 12px; border-radius: 20px; display: inline-block; margin-bottom: 12px; }
+    .vault-box { background: rgba(0,90,193,0.05); border: 2px dashed #005ac1; border-radius: 14px; padding: 20px; margin: 24px 0; text-align: left; }
+    .key-display { font-family: monospace; font-size: 18px; font-weight: 800; color: var(--primary); word-break: break-all; margin: 8px 0; background: var(--card); padding: 12px; border-radius: 8px; border: 1px solid rgba(0,90,193,0.2); text-align: center; }
+    .action-row { display: flex; gap: 10px; margin-bottom: 12px; }
+    .btn { display: block; width: 100%; box-sizing: border-box; background: #005ac1; color: white; padding: 13px; border-radius: 10px; font-weight: 700; text-decoration: none; border: none; cursor: pointer; font-size: 14.5px; transition: 0.2s; text-align: center; }
+    .btn:hover { background: #004291; }
+    .btn-secondary { background: #0f766e; }
+    .btn-secondary:hover { background: #115e59; }
+    .btn-outline { background: transparent; border: 1.5px solid rgba(148,163,184,0.4); color: var(--text); }
+    .btn-outline:hover { background: rgba(148,163,184,0.1); }
+    .steps { text-align: left; font-size: 13.5px; color: #64748b; padding-left: 18px; margin: 16px 0; }
+    .steps li { margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <a href="/" class="logo">AdShield</a>
+    <div>
+      <a href="/download" style="color:var(--primary); font-weight:600; text-decoration:none;">Download App</a>
+    </div>
+  </div>
+  <div class="container">
+    <div class="card">
+      <div class="icon">🎉</div>
+      <span class="badge">PAYSTACK VERIFIED · PAID ₦${result.amountPaidNaira.toLocaleString()}</span>
+      <h2 style="color:#10b981; margin:0 0 6px 0;">Payment Confirmed!</h2>
+      <p style="color:#64748b; font-size:15px; margin:0 0 20px 0;">Your <strong>${result.plan}</strong> license has been successfully generated.</p>
+
+      <div class="vault-box">
+        <div style="font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; text-transform:uppercase;">Master License Recovery Key</div>
+        <div class="key-display" id="keyVal">${result.licenseKey}</div>
+        <div style="font-size:12px; color:#b45309; line-height:1.4; margin-top:8px;">
+          ⚠️ <strong>SHOWN ONLY ONCE:</strong> AdShield operates on zero-surveillance principles and never stores your key centrally. Save this key in a password manager or email backup. If you change or reset your phone, enter this key in AdShield to restore your subscription.
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button type="button" class="btn" onclick="copyKey()">Copy Key 📋</button>
+        <button type="button" class="btn btn-secondary" onclick="downloadBackup()">Save .txt 💾</button>
+      </div>
+      <button type="button" class="btn btn-outline" onclick="emailKey()" style="margin-bottom:20px;">Email Key to Myself ✉️</button>
+
+      <div style="text-align:left; border-top:1px solid rgba(148,163,184,0.2); padding-top:20px;">
+        <h4 style="margin:0 0 6px 0;">How to Activate in AdShield for Android:</h4>
+        <ol class="steps">
+          <li>Open the AdShield app on your phone.</li>
+          <li>Tap <strong>Settings</strong> > <strong>Account & Licensing</strong>.</li>
+          <li>Under <strong>Restore on New Device</strong>, paste your Master Recovery Key.</li>
+          <li>Tap <strong>Re-activate Subscription</strong>. All shields engage instantly!</li>
+        </ol>
+        <a href="adshield://activate?key=${result.licenseKey}" class="btn" style="margin-bottom:10px;">Activate in AdShield App 📱</a>
+        <a href="/download" style="display:block; text-align:center; font-size:13.5px; color:var(--primary); text-decoration:none; font-weight:600;">Download AdShield APK for Android →</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const licenseKey = "${result.licenseKey}";
+    const plan = "${result.plan}";
+    const ref = "${result.reference}";
+
+    function copyKey() {
+      navigator.clipboard.writeText(licenseKey).then(() => {
         alert("License Recovery Key copied to clipboard! Save it safely.");
       }).catch(() => {
-        alert("Recovery Key: " + key);
+        alert("License Key: " + licenseKey);
       });
     }
 
-    function downloadLicenseFile() {
-      const key = document.getElementById("resKey").innerText;
-      const plan = document.getElementById("planSelect").value;
-      const ref = document.getElementById("resRef").innerText;
-      const text = "ADSHIELD PRO — MASTER LICENSE RECOVERY BACKUP\n" +
-                   "============================================\n\n" +
-                   "License Recovery Key: " + key + "\n" +
-                   "Subscription Plan:    " + plan + "\n" +
-                   "Payment Reference:    " + ref + "\n" +
-                   "Issued Date:          " + new Date().toISOString() + "\n\n" +
-                   "HOW TO RESTORE ON A NEW DEVICE:\n" +
-                   "1. Install AdShield for Android\n" +
-                   "2. Open Settings > Account & Licensing\n" +
-                   "3. Paste your License Recovery Key under 'Redeem License Key / Reference'\n" +
-                   "4. Tap 'Activate License' — all shields will instantly engage.\n\n" +
-                   "SECURITY NOTICE:\n" +
-                   "AdShield operates on strict zero-surveillance principles. We do not store\n" +
-                   "browsing logs or your key on centralized servers. Keep this file safe.\n";
+    function downloadBackup() {
+      const text = "ADSHIELD PRO — MASTER LICENSE RECOVERY BACKUP\\n" +
+                   "============================================\\n\\n" +
+                   "Master Recovery Key: " + licenseKey + "\\n" +
+                   "Subscription Plan:   " + plan + "\\n" +
+                   "Payment Reference:   " + ref + "\\n" +
+                   "Status:              CONFIRMED VIA PAYSTACK\\n" +
+                   "Date:                " + new Date().toISOString() + "\\n\\n" +
+                   "HOW TO RESTORE ON A NEW ANDROID DEVICE:\\n" +
+                   "1. Install AdShield for Android\\n" +
+                   "2. Go to Settings > Account & Licensing\\n" +
+                   "3. Under 'Restore on New Device', enter this Master Recovery Key\\n" +
+                   "4. Tap 'Re-activate Subscription'\\n\\n" +
+                   "ZERO-SURVEILLANCE NOTICE:\\n" +
+                   "AdShield does not track you or keep user logs on central servers.\\n" +
+                   "Keep this file safe in your private records or password manager.\\n";
       const blob = new Blob([text], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "AdShield-" + plan + "-License-" + key.substring(0, 15) + ".txt";
+      a.download = "AdShield-License-" + plan + "-" + licenseKey.substring(0, 12) + ".txt";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }
 
-    function emailLicenseKey() {
-      const email = document.getElementById("customerEmail").value.trim();
-      const key = document.getElementById("resKey").innerText;
-      const plan = document.getElementById("planSelect").value;
+    function emailKey() {
       const subject = encodeURIComponent("My AdShield Pro License Recovery Key");
       const body = encodeURIComponent(
-        "AdShield Pro License Key Backup\n\n" +
-        "Plan: " + plan + "\n" +
-        "Recovery Key: " + key + "\n\n" +
-        "Save this email. If you change your phone or reset device storage, enter this key in the AdShield app under 'Redeem License Key' to restore your subscription as long as it has not expired."
+        "AdShield Pro Master License Recovery Key\\n\\n" +
+        "Plan: " + plan + "\\n" +
+        "License Recovery Key: " + licenseKey + "\\n" +
+        "Payment Reference: " + ref + "\\n\\n" +
+        "Keep this key safe. If you change your phone, enter this key in AdShield under 'Restore on New Device' to reactivate your subscription."
       );
-      window.location.href = "mailto:" + email + "?subject=" + subject + "&body=" + body;
+      window.location.href = "mailto:?subject=" + subject + "&body=" + body;
     }
   </script>
 </body>
-</html>`);
-};
-app.get("/checkout", handleCheckout);
-app.get("/pay", handleCheckout);
+</html>
+  `);
+});
 
 // --- Public Download Page: GET /download ---
 app.get("/download", (req, res) => {

@@ -14,7 +14,7 @@ class ReleaseStore {
         minimumAndroidVersion: 26,
         releaseDate: "2026-09-23",
         downloadUrl: "/download/AdShield-v1.0.0.apk",
-        sha256: "3304ffc0f7b4e90a1bf8987e4d27e53c991c0fefaf4df22d3d3e0b3761f3bd85",
+        sha256: "cac3f9f1ac953a8b744c574286eced3e76e17903735b4a790c35e6bfc32d30d3",
         fileSizeBytes: 2083609,
         releaseNotesUrl: "/docs/RELEASE.md",
         status: "STABLE",
