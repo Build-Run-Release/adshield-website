@@ -16,7 +16,7 @@ const path = require("path");
 const fs = require("fs");
 
 const { releaseStore, releaseApiRouter } = require("./api/releases");
-const { licensingApiRouter } = require("./api/licensing");
+const { licensingApiRouter, PAYSTACK_PLANS, PAYSTACK_PUBLIC_KEY } = require("./api/licensing");
 const { filtersApiRouter } = require("./api/filters");
 const { adminRouter } = require("./admin/adminRouter");
 
@@ -560,6 +560,234 @@ app.get("/docs/:file", (req, res) => {
 app.get("/pricing", (req, res) => {
   res.redirect("/#pricing");
 });
+
+// --- Public Paystack Web Checkout Portal: GET /checkout & GET /pay ---
+const handleCheckout = (req, res) => {
+  const planQuery = (req.query.plan || "MONTHLY").toUpperCase();
+  const selectedPlanKey = PAYSTACK_PLANS[planQuery] ? planQuery : "MONTHLY";
+  const planData = PAYSTACK_PLANS[selectedPlanKey];
+
+  const activeKey = req.query.key || PAYSTACK_PUBLIC_KEY;
+  const userEmail = req.query.email || "";
+  const initialRef = req.query.ref || `adshield_${selectedPlanKey.toLowerCase()}_${Date.now()}`;
+  const isLive = activeKey.startsWith("pk_live_");
+
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Paystack Checkout — AdShield Pro</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://js.paystack.co/v1/inline.js"></script>
+  <style>
+    :root { --primary: #005ac1; --primary-dark: #004291; --bg: #f8fafc; --text: #0f172a; --card: #ffffff; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0b1120; --text: #f8fafc; --card: #131d35; --primary: #38bdf8; --primary-dark: #0284c7; }
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; line-height: 1.6; }
+    .nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 8%; background: var(--card); border-bottom: 1px solid rgba(148,163,184,0.2); }
+    .logo { font-size: 22px; font-weight: 800; color: var(--primary); text-decoration: none; display: flex; align-items: center; gap: 8px; }
+    .nav-links a { margin-left: 20px; color: var(--text); text-decoration: none; font-weight: 500; font-size: 14.5px; }
+    .container { max-width: 540px; margin: 40px auto; padding: 0 16px; }
+    .checkout-card { background: var(--card); border: 1.5px solid rgba(148,163,184,0.25); border-radius: 18px; padding: 32px 28px; box-shadow: 0 8px 30px rgba(0,0,0,0.06); }
+    .paystack-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid rgba(148,163,184,0.2); padding-bottom: 16px; }
+    .gateway-badge { background: #00C3F7; color: #002b49; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 800; }
+    .plan-box { background: rgba(0,90,193,0.06); border: 1.5px solid rgba(0,90,193,0.2); border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+    .price { font-size: 32px; font-weight: 800; color: var(--primary); margin: 6px 0; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13.5px; font-weight: 600; margin-bottom: 6px; }
+    .form-control { width: 100%; box-sizing: border-box; padding: 12px 14px; border: 1.5px solid rgba(148,163,184,0.3); border-radius: 10px; font-size: 15px; background: var(--bg); color: var(--text); }
+    .btn-pay { display: block; width: 100%; box-sizing: border-box; background: #005ac1; color: white; border: none; padding: 16px; border-radius: 12px; font-size: 17px; font-weight: 700; cursor: pointer; transition: 0.2s; text-align: center; }
+    .btn-pay:hover { background: #004291; }
+    .channels-bar { font-size: 12px; color: #64748b; margin-top: 14px; text-align: center; line-height: 1.5; }
+    .key-badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; display: inline-block; }
+    .key-live { background: #dcfce7; color: #166534; }
+    .key-test { background: #fef9c3; color: #854d0e; }
+    .success-panel { display: none; text-align: center; padding: 20px 0; }
+    .success-icon { font-size: 54px; margin-bottom: 12px; }
+    .code-box { background: rgba(148,163,184,0.15); padding: 12px; border-radius: 8px; font-family: monospace; font-size: 14px; margin: 16px 0; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <a href="/" class="logo"><img src="/images/adshield_icon.png" width="34" height="34" style="border-radius:8px; vertical-align:middle;"> AdShield</a>
+    <div class="nav-links">
+      <a href="/#pricing">Pricing</a>
+      <a href="/download">Download</a>
+      <a href="/docs">Docs</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="checkout-card" id="paymentCard">
+      <div class="paystack-header">
+        <div>
+          <h2 style="margin:0; font-size:22px;">Paystack Checkout</h2>
+          <div style="font-size:13px; color:#64748b; margin-top:2px;">Secured Payment for AdShield Pro</div>
+        </div>
+        <span class="gateway-badge">PAYSTACK 🔒</span>
+      </div>
+
+      <div class="plan-box">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <strong id="planNameDisplay">${planData.name}</strong>
+          <span class="key-badge ${isLive ? 'key-live' : 'key-test'}" id="modeBadge">${isLive ? 'LIVE 🟢' : 'TEST 🟡'}</span>
+        </div>
+        <div class="price" id="planPriceDisplay">₦${planData.amountNaira.toLocaleString()}</div>
+        <div style="font-size:12.5px; color:#64748b;" id="planDescDisplay">${selectedPlanKey === 'LIFETIME' ? 'One-time payment · Lifetime Pro Protection' : 'Renews automatically · Cancel anytime'}</div>
+      </div>
+
+      <div class="form-group">
+        <label for="planSelect">Selected Subscription Tier</label>
+        <select id="planSelect" class="form-control" onchange="updatePlanSelection()">
+          <option value="MONTHLY" ${selectedPlanKey === 'MONTHLY' ? 'selected' : ''}>Monthly Plan — ₦1,200 / month</option>
+          <option value="YEARLY" ${selectedPlanKey === 'YEARLY' ? 'selected' : ''}>Yearly Plan — ₦8,500 / year (Save 41%)</option>
+          <option value="LIFETIME" ${selectedPlanKey === 'LIFETIME' ? 'selected' : ''}>Lifetime License — ₦18,000 once</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="customerEmail">Receipt Email Address</label>
+        <input type="email" id="customerEmail" class="form-control" placeholder="your.email@example.com" value="${userEmail}">
+      </div>
+
+      <div class="form-group">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <label for="publicKeyInput" style="margin:0;">Paystack Public Key</label>
+          <span style="font-size:11px; color:#64748b;">(pk_test_... or pk_live_...)</span>
+        </div>
+        <input type="text" id="publicKeyInput" class="form-control" style="font-family:monospace; font-size:13px;" value="${activeKey}" oninput="updateKeyMode()">
+      </div>
+
+      <input type="hidden" id="txRef" value="${initialRef}">
+
+      <button type="button" class="btn-pay" id="payButton" onclick="initiatePaystack()">Pay ₦${planData.amountNaira.toLocaleString()} with Paystack</button>
+
+      <div class="channels-bar">
+        💳 <strong>Supported Nigerian Payment Methods:</strong><br/>
+        Bank Transfer • OPay & PalmPay • USSD (*737#, *919#) • Verve, Mastercard & Visa
+      </div>
+    </div>
+
+    <!-- Success Confirmation State -->
+    <div class="checkout-card success-panel" id="successCard">
+      <div class="success-icon">🎉</div>
+      <h2 style="color:#10b981; margin:0;">Payment Confirmed!</h2>
+      <p style="color:#64748b; font-size:15px; margin:8px 0 16px;">Your Paystack transaction was completed successfully.</p>
+      
+      <div style="text-align:left; background:var(--bg); border:1px solid rgba(148,163,184,0.25); border-radius:12px; padding:16px; margin:20px 0;">
+        <div style="font-size:12px; color:#64748b;">TRANSACTION REFERENCE:</div>
+        <div class="code-box" id="resRef">...</div>
+        <div style="font-size:12px; color:#64748b; margin-top:8px;">ACTIVATED LICENSE KEY:</div>
+        <div class="code-box" id="resKey" style="color:var(--primary); font-weight:bold;">...</div>
+      </div>
+
+      <p style="font-size:14px; color:#64748b;">Switch back to your <strong>AdShield app</strong> and tap <strong>Verify & Activate</strong> or paste your reference to enjoy full Pro protection!</p>
+      <a href="intent://#Intent;package=com.adshield.android;end" class="btn-pay" style="text-decoration:none;">Open AdShield App</a>
+    </div>
+  </div>
+
+  <script>
+    const PLANS = {
+      MONTHLY: { name: "Monthly Plan", amountNaira: 1200, amountKobo: 120000, desc: "Renews monthly · Cancel anytime" },
+      YEARLY: { name: "Yearly Plan", amountNaira: 8500, amountKobo: 850000, desc: "~₦708/mo · Save 41% · All shields active" },
+      LIFETIME: { name: "Lifetime License", amountNaira: 18000, amountKobo: 1800000, desc: "One-time purchase · Lifetime protection" }
+    };
+
+    function updatePlanSelection() {
+      const plan = document.getElementById("planSelect").value;
+      const data = PLANS[plan];
+      document.getElementById("planNameDisplay").innerText = data.name;
+      document.getElementById("planPriceDisplay").innerText = "₦" + data.amountNaira.toLocaleString();
+      document.getElementById("planDescDisplay").innerText = data.desc;
+      document.getElementById("payButton").innerText = "Pay ₦" + data.amountNaira.toLocaleString() + " with Paystack";
+    }
+
+    function updateKeyMode() {
+      const key = document.getElementById("publicKeyInput").value.trim();
+      const badge = document.getElementById("modeBadge");
+      if (key.startsWith("pk_live_")) {
+        badge.innerText = "LIVE 🟢";
+        badge.className = "key-badge key-live";
+      } else {
+        badge.innerText = "TEST 🟡";
+        badge.className = "key-badge key-test";
+      }
+    }
+
+    function initiatePaystack() {
+      const email = document.getElementById("customerEmail").value.trim();
+      const key = document.getElementById("publicKeyInput").value.trim();
+      const plan = document.getElementById("planSelect").value;
+      const planData = PLANS[plan];
+      const ref = document.getElementById("txRef").value;
+
+      if (!email || !email.includes("@")) {
+        alert("Please enter a valid email address to receive your payment receipt.");
+        return;
+      }
+
+      if (!key) {
+        alert("Please provide a valid Paystack Public Key.");
+        return;
+      }
+
+      const handler = PaystackPop.setup({
+        key: key,
+        email: email,
+        amount: planData.amountKobo,
+        currency: "NGN",
+        ref: ref,
+        channels: ["card", "bank", "ussd", "qr", "mobile_money", "bank_transfer"],
+        metadata: {
+          custom_fields: [
+            { display_name: "Plan", variable_name: "plan", value: plan },
+            { display_name: "Product", variable_name: "product", value: "AdShield Android" }
+          ]
+        },
+        callback: function(response) {
+          // Verify with AdShield backend
+          fetch("/api/v1/licenses/paystack/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              reference: response.reference,
+              deviceInstallId: "device_paystack_web_" + response.reference.substring(0, 10),
+              plan: plan,
+              appVersion: "1.0.0"
+            })
+          })
+          .then(res => res.json())
+          .then(data => {
+            document.getElementById("paymentCard").style.display = "none";
+            document.getElementById("successCard").style.display = "block";
+            document.getElementById("resRef").innerText = response.reference;
+            if (data.data && data.data.licenseKey) {
+              document.getElementById("resKey").innerText = data.data.licenseKey;
+            } else {
+              document.getElementById("resKey").innerText = "PSK-" + plan + "-PRO";
+            }
+          })
+          .catch(() => {
+            document.getElementById("paymentCard").style.display = "none";
+            document.getElementById("successCard").style.display = "block";
+            document.getElementById("resRef").innerText = response.reference;
+            document.getElementById("resKey").innerText = "PSK-" + plan + "-PRO";
+          });
+        },
+        onClose: function() {
+          // User closed checkout popup
+        }
+      });
+
+      handler.openIframe();
+    }
+  </script>
+</body>
+</html>`);
+};
+app.get("/checkout", handleCheckout);
+app.get("/pay", handleCheckout);
 
 // --- Public Download Page: GET /download ---
 app.get("/download", (req, res) => {

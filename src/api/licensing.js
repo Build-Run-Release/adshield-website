@@ -261,7 +261,8 @@ function licensingApiRouter(express) {
     const reference = `adshield_${plan.toLowerCase()}_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
     const userEmail = email || `user_${deviceInstallId.substring(0, 8)}@adshield.internal`;
 
-    // Paystack standard checkout payload
+    const checkoutUrl = `/checkout?plan=${plan}&amount=${selectedPlan.amountNaira}&email=${encodeURIComponent(userEmail)}&key=${encodeURIComponent(activePublicKey)}&ref=${reference}`;
+
     res.json({
       status: "success",
       message: "Paystack transaction initialized",
@@ -274,7 +275,7 @@ function licensingApiRouter(express) {
         email: userEmail,
         publicKey: activePublicKey,
         channels: ["card", "bank", "ussd", "qr", "mobile_money", "bank_transfer"],
-        authorizationUrl: `https://checkout.paystack.com/${reference}`
+        authorizationUrl: checkoutUrl
       }
     });
   });
@@ -330,5 +331,6 @@ module.exports = {
   licensingApiRouter,
   businessMetrics,
   activeAppsStore,
-  PAYSTACK_PLANS
+  PAYSTACK_PLANS,
+  PAYSTACK_PUBLIC_KEY
 };

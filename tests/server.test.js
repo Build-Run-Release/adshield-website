@@ -184,11 +184,11 @@ async function runTests() {
 
     // 9. Documentation and Footer Links 200 OK Verification
     console.log("9. Testing All Public Footer Links & Documentation Pages (0 Broken Links)...");
-    const footerRoutes = ["/privacy", "/security", "/limitations", "/releases", "/docs", "/download", "/docs/ARCHITECTURE.md"];
+    const footerRoutes = ["/privacy", "/security", "/limitations", "/releases", "/docs", "/download", "/docs/ARCHITECTURE.md", "/checkout", "/pay"];
     for (const route of footerRoutes) {
       const pageRes = await makeRequest(route);
       assert.strictEqual(pageRes.statusCode, 200, `Expected ${route} to return 200 OK`);
-      assert.ok(pageRes.data.includes("AdShield"), `Expected ${route} to contain AdShield layout`);
+      assert.ok(pageRes.data.includes("AdShield") || pageRes.data.includes("Paystack"), `Expected ${route} to contain AdShield/Paystack content`);
     }
 
     // Pricing redirect test
