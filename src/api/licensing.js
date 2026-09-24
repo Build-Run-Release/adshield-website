@@ -2,7 +2,7 @@ const crypto = require("crypto");
 
 const SIGNING_SECRET = process.env.ENTITLEMENT_SIGNING_KEY || "adshield_production_entitlement_secret_2026";
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || "sk_test_adshield_demo_key_2026";
-const PAYSTACK_PUBLIC_KEY = process.env.PAYSTACK_PUBLIC_KEY || "pk_test_adshield_demo_key_2026";
+const PAYSTACK_PUBLIC_KEY = process.env.PAYSTACK_PUBLIC_KEY || "pk_live_9384e558e33eb4a758190e936bf8cb3ad0cbdf71";
 const TRIAL_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 // Paystack Subscription Plans (Affordable Nigerian Naira pricing)
