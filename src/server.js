@@ -631,7 +631,7 @@ const handleCheckout = (req, res) => {
       <div class="plan-box">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <strong id="planNameDisplay">${planData.name}</strong>
-          <span class="key-badge ${isLive ? 'key-live' : 'key-test'}" id="modeBadge">${isLive ? 'LIVE 🟢' : 'TEST 🟡'}</span>
+          <span class="key-badge key-live" id="modeBadge">SECURE CHECKOUT 🔒</span>
         </div>
         <div class="price" id="planPriceDisplay">₦${planData.amountNaira.toLocaleString()}</div>
         <div style="font-size:12.5px; color:#64748b;" id="planDescDisplay">${selectedPlanKey === 'LIFETIME' ? 'One-time payment · Lifetime Pro Protection' : 'Renews automatically · Cancel anytime'}</div>
@@ -651,13 +651,7 @@ const handleCheckout = (req, res) => {
         <input type="email" id="customerEmail" class="form-control" placeholder="your.email@example.com" value="${userEmail}">
       </div>
 
-      <div class="form-group">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-          <label for="publicKeyInput" style="margin:0;">Paystack Public Key</label>
-          <span style="font-size:11px; color:#64748b;">(pk_test_... or pk_live_...)</span>
-        </div>
-        <input type="text" id="publicKeyInput" class="form-control" style="font-family:monospace; font-size:13px;" value="${activeKey}" oninput="updateKeyMode()">
-      </div>
+      <input type="hidden" id="publicKeyInput" value="${activeKey}">
 
       <input type="hidden" id="txRef" value="${initialRef}">
 
@@ -713,10 +707,12 @@ const handleCheckout = (req, res) => {
     }
 
     function updateKeyMode() {
-      const key = document.getElementById("publicKeyInput").value.trim();
+      const keyEl = document.getElementById("publicKeyInput");
       const badge = document.getElementById("modeBadge");
+      if (!badge || !keyEl) return;
+      const key = keyEl.value.trim();
       if (key.startsWith("pk_live_")) {
-        badge.innerText = "LIVE 🟢";
+        badge.innerText = "SECURE CHECKOUT 🔒";
         badge.className = "key-badge key-live";
       } else {
         badge.innerText = "TEST 🟡";
