@@ -32,7 +32,7 @@ app.use(helmet({
 app.use(cookieParser());
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
-app.use(express.static(path.join(__dirname, "../public")));
+app.use(express.static(path.join(__dirname, "../public"), { redirect: false }));
 
 // 3. MANDATORY PRIVACY GATE MIDDLEWARE
 // Automatically rejects any request that attempts to transmit prohibited user browsing or security activity
@@ -166,7 +166,8 @@ app.get("/", (req, res) => {
       <a href="/#features">Features</a>
       <a href="/#pricing">Pricing</a>
       <a href="/download">Download</a>
-      <a href="/docs/PRIVACY.md">Privacy Policy</a>
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/docs">Documentation</a>
       <a href="/admin">Owner Portal</a>
     </div>
   </div>
@@ -309,18 +310,255 @@ app.get("/", (req, res) => {
   </div>
 
   <div class="footer">
-    <p>© 2026 AdShield. Built native for Android 8.0+ (API 26+).</p>
-    <div>
-      <a href="/docs/PRIVACY.md">Privacy Policy</a>
-      <a href="/docs/SECURITY.md">Security Model</a>
-      <a href="/docs/ANDROID_LIMITATIONS.md">Android Limitations</a>
-      <a href="/docs/RELEASE.md">Release Notes</a>
+    <p style="font-weight:600; margin-bottom:6px;">© 2026 AdShield — Private, Native Android Threat & Ad Defense.</p>
+    <p style="font-size:13px; color:#64748b; margin-top:0;">Built native for Android 8.0+ (API 26+). Absolute Zero-Surveillance Architecture.</p>
+    <div style="display:flex; justify-content:center; gap:16px; flex-wrap:wrap; margin-top:16px;">
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/security">Security Model</a>
+      <a href="/limitations">Android Transparency</a>
+      <a href="/releases">Release Notes</a>
+      <a href="/docs">Documentation Portal</a>
+      <a href="/download">Download APK</a>
       <a href="/admin">Private Owner Admin</a>
     </div>
   </div>
 </body>
 </html>
   `);
+});
+
+// --- Documentation System Helpers ---
+
+function readDocContent(fileName) {
+  const searchPaths = [
+    path.join(__dirname, "../public/docs", fileName),
+    path.join(__dirname, "../../docs", fileName),
+    path.join(__dirname, "../docs", fileName),
+    path.join(__dirname, "docs", fileName)
+  ];
+  for (const p of searchPaths) {
+    if (fs.existsSync(p)) {
+      return fs.readFileSync(p, "utf-8");
+    }
+  }
+  return null;
+}
+
+function formatMarkdownToHtml(md) {
+  if (!md) return "<p>Documentation content currently unavailable.</p>";
+  return md
+    .replace(/^### (.*$)/gim, "<h3>$1</h3>")
+    .replace(/^## (.*$)/gim, "<h2>$1</h2>")
+    .replace(/^# (.*$)/gim, "<h1>$1</h1>")
+    .replace(/^\> (.*$)/gim, "<blockquote>$1</blockquote>")
+    .replace(/\*\*(.*?)\*\*/gim, "<strong>$1</strong>")
+    .replace(/\*(.*?)\*/gim, "<em>$1</em>")
+    .replace(/```([a-z]*)\n([\s\S]*?)```/gim, "<pre><code>$2</code></pre>")
+    .replace(/`([^`]+)`/gim, "<code>$1</code>")
+    .replace(/^\s*\-\s+(.*$)/gim, "<li>$1</li>")
+    .replace(/^\s*\d+\.\s+(.*$)/gim, "<li>$1</li>")
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/gim, '<a href="$2">$1</a>')
+    .replace(/^\-\-\-$/gim, "<hr/>")
+    .replace(/\n\n/gim, "</p><p>");
+}
+
+function renderDocPage({ title, subtitle, badge, contentHtml }) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>${title} — AdShield Documentation</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root { --primary: #005ac1; --bg: #f8fafc; --text: #0f172a; --card: #ffffff; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0b1120; --text: #f8fafc; --card: #131d35; --primary: #38bdf8; }
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; line-height: 1.6; }
+    .nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 8%; background: var(--card); border-bottom: 1px solid rgba(148,163,184,0.2); }
+    .logo { font-size: 22px; font-weight: 800; color: var(--primary); text-decoration: none; display: flex; align-items: center; gap: 8px; }
+    .nav-links a { margin-left: 20px; color: var(--text); text-decoration: none; font-weight: 500; font-size: 14.5px; }
+    .nav-links a:hover { color: var(--primary); }
+    .container { max-width: 860px; margin: 40px auto; padding: 0 6% 60px; }
+    .doc-card { background: var(--card); border: 1.5px solid rgba(148,163,184,0.25); border-radius: 16px; padding: 36px 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+    .badge { display: inline-block; background: rgba(2,132,199,0.15); color: #0284c7; padding: 4px 12px; border-radius: 6px; font-weight: 700; font-size: 12px; margin-bottom: 12px; }
+    @media (prefers-color-scheme: dark) { .badge { color: #38bdf8; background: rgba(56,189,248,0.15); } }
+    h1 { font-size: 32px; margin-top: 0; margin-bottom: 8px; color: var(--primary); line-height: 1.25; }
+    .subtitle { font-size: 16px; color: #64748b; margin-bottom: 28px; border-bottom: 1px solid rgba(148,163,184,0.2); padding-bottom: 16px; }
+    h2 { font-size: 22px; margin-top: 30px; margin-bottom: 12px; border-bottom: 1px solid rgba(148,163,184,0.15); padding-bottom: 6px; color: var(--primary); }
+    h3 { font-size: 17px; margin-top: 20px; margin-bottom: 8px; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; }
+    th, td { text-align: left; padding: 12px 14px; border: 1px solid rgba(148,163,184,0.25); }
+    th { background: rgba(148,163,184,0.1); font-weight: 700; }
+    blockquote { border-left: 4px solid var(--primary); margin: 20px 0; padding: 12px 18px; background: rgba(2,132,199,0.06); border-radius: 0 8px 8px 0; font-weight: 500; }
+    code { font-family: monospace; font-size: 13px; background: rgba(148,163,184,0.15); padding: 2px 6px; border-radius: 4px; }
+    pre { background: #0f172a; color: #f8fafc; padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 13px; }
+    pre code { background: transparent; padding: 0; color: inherit; }
+    ul, ol { padding-left: 24px; }
+    li { margin-bottom: 8px; }
+    .back-btn { display: inline-flex; align-items: center; gap: 6px; color: var(--primary); text-decoration: none; font-weight: 600; font-size: 14px; margin-bottom: 20px; }
+    .footer { background: var(--card); border-top: 1px solid rgba(148,163,184,0.2); padding: 36px 8%; text-align: center; font-size: 14px; color: #64748b; }
+    .footer a { color: #64748b; margin: 0 10px; text-decoration: none; }
+    .footer a:hover { color: var(--primary); }
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <a href="/" class="logo"><img src="/images/adshield_icon.png" width="34" height="34" style="border-radius:8px; vertical-align:middle;"> AdShield</a>
+    <div class="nav-links">
+      <a href="/#features">Features</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="/download">Download</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/docs">Docs</a>
+      <a href="/admin">Owner Portal</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <a href="/" class="back-btn">← Back to AdShield Overview</a>
+    <div class="doc-card">
+      ${badge ? `<span class="badge">${badge}</span>` : ""}
+      <h1>${title}</h1>
+      <div class="subtitle">${subtitle}</div>
+      <div class="content">${contentHtml}</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>© 2026 AdShield. Built native for Android 8.0+ (API 26+).</p>
+    <div style="display:flex; justify-content:center; gap:16px; flex-wrap:wrap; margin-top:12px;">
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/security">Security Model</a>
+      <a href="/limitations">Android Transparency</a>
+      <a href="/releases">Release Notes</a>
+      <a href="/docs">Documentation Portal</a>
+      <a href="/download">Download APK</a>
+      <a href="/admin">Owner Portal</a>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+// --- Dedicated Documentation Routes ---
+
+// 1. Privacy Policy: GET /privacy & GET /docs/PRIVACY.md
+const handlePrivacy = (req, res) => {
+  const content = readDocContent("PRIVACY.md");
+  res.send(renderDocPage({
+    title: "Privacy Architecture & Zero-Surveillance Policy",
+    subtitle: "Complete transparency into how AdShield protects you without collecting or storing your personal data.",
+    badge: "ZERO-SURVEILLANCE GUARANTEE",
+    contentHtml: formatMarkdownToHtml(content)
+  }));
+};
+app.get("/privacy", handlePrivacy);
+app.get("/docs/PRIVACY.md", handlePrivacy);
+
+// 2. Security Model: GET /security & GET /docs/SECURITY.md
+const handleSecurity = (req, res) => {
+  const content = readDocContent("SECURITY.md");
+  res.send(renderDocPage({
+    title: "Security Model & Threat Defense",
+    subtitle: "In-depth engineering documentation of AdShield's cryptographic licensing, sandboxed quarantine, and Radix Trie filters.",
+    badge: "SECURITY SPECIFICATION",
+    contentHtml: formatMarkdownToHtml(content)
+  }));
+};
+app.get("/security", handleSecurity);
+app.get("/docs/SECURITY.md", handleSecurity);
+
+// 3. Android Limitations: GET /limitations & GET /docs/ANDROID_LIMITATIONS.md
+const handleLimitations = (req, res) => {
+  const content = readDocContent("ANDROID_LIMITATIONS.md");
+  res.send(renderDocPage({
+    title: "Android Platform Limitations & Transparency",
+    subtitle: "Clear technical disclosures on VpnService exclusivity, DoH/DoT fallbacks, and battery optimization requirements.",
+    badge: "PLATFORM TRANSPARENCY",
+    contentHtml: formatMarkdownToHtml(content)
+  }));
+};
+app.get("/limitations", handleLimitations);
+app.get("/docs/ANDROID_LIMITATIONS.md", handleLimitations);
+
+// 4. Release Notes: GET /releases & GET /docs/RELEASE.md
+const handleReleases = (req, res) => {
+  const content = readDocContent("RELEASE.md");
+  res.send(renderDocPage({
+    title: "Release Notes & Checksums",
+    subtitle: "Official release history, SHA-256 integrity digests, and safe Android sideloading instructions.",
+    badge: "OFFICIAL RELEASES",
+    contentHtml: formatMarkdownToHtml(content)
+  }));
+};
+app.get("/releases", handleReleases);
+app.get("/docs/RELEASE.md", handleReleases);
+
+// 5. Documentation Portal: GET /docs & GET /docs/
+app.get(["/docs", "/docs/"], (req, res) => {
+  const guides = [
+    { title: "Privacy Architecture", path: "/privacy", desc: "Zero-surveillance architecture, on-device DNS filtering, and data policy." },
+    { title: "Security Architecture", path: "/security", desc: "Radix trie memory rules, cryptographic HMAC-SHA256 tokens, and threat database." },
+    { title: "Android Platform Limitations", path: "/limitations", desc: "Transparent disclosures on VpnService rules, DoH, and battery optimization." },
+    { title: "Release Notes & Hashes", path: "/releases", desc: "Official APK release digests, build 100 changelog, and integrity verification." },
+    { title: "System Architecture", path: "/docs/ARCHITECTURE.md", desc: "Multi-layer overview of VPN DNS wire capture, quarantine vault, and rule engines." },
+    { title: "Filter Syntax & Compilers", path: "/docs/FILTERS.md", desc: "Support for /etc/hosts, Adblock Plus rules, and Radix Trie fast lookup." },
+    { title: "Filter Source Policy", path: "/docs/FILTER_SOURCE_POLICY.md", desc: "Criteria for upstream filter verification, canary checks, and rollback safety." },
+    { title: "Threat Modeling", path: "/docs/THREAT_MODEL.md", desc: "STRIDE analysis, threat boundaries, and sandboxed quarantine defense." },
+    { title: "Dual-Layer Updates", path: "/docs/UPDATES.md", desc: "Independent filter intelligence sync vs signed APK code update pipelines." },
+    { title: "Licensing & Grace Periods", path: "/docs/LICENSING.md", desc: "7-day trials, 14-day offline grace windows, and Paystack integration." },
+    { title: "Hosting Runbook", path: "/docs/HOSTING.md", desc: "Production deployment guide for Node.js, Express, Docker, and Vercel." },
+    { title: "Website & APK Hosting Guide", path: "/docs/HOW_TO_HOST_WEBSITE.md", desc: "Detailed tutorial on hosting AdShield on Vercel and releasing APKs." },
+    { title: "Owner Admin Portal Guide", path: "/docs/ADMIN_DASHBOARD.md", desc: "Private dashboard access, telemetry from active devices, and release controls." }
+  ];
+
+  const cardsHtml = `
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:18px; margin-top:20px;">
+      ${guides.map(g => `
+        <div style="background:rgba(148,163,184,0.06); border:1px solid rgba(148,163,184,0.2); border-radius:12px; padding:20px; display:flex; flex-direction:column; justify-content:space-between;">
+          <div>
+            <h3 style="margin-top:0; font-size:17px; color:var(--primary);">${g.title}</h3>
+            <p style="font-size:13.5px; color:#64748b; line-height:1.45;">${g.desc}</p>
+          </div>
+          <a href="${g.path}" style="color:var(--primary); font-weight:700; font-size:13.5px; text-decoration:none; margin-top:12px;">Read Document →</a>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  res.send(renderDocPage({
+    title: "AdShield Engineering Documentation Portal",
+    subtitle: "Complete technical reference for AdShield's native filtering, privacy guarantees, security subsystems, and operational runbooks.",
+    badge: "13 PRODUCTION GUIDES",
+    contentHtml: cardsHtml
+  }));
+});
+
+// Dynamic markdown viewer for any /docs/:file
+app.get("/docs/:file", (req, res) => {
+  const fileName = req.params.file;
+  const content = readDocContent(fileName);
+  if (!content) {
+    return res.status(404).send(renderDocPage({
+      title: "Document Not Found",
+      subtitle: `Could not locate documentation file: ${fileName}`,
+      badge: "404 ERROR",
+      contentHtml: `<p>The requested document could not be found. Please return to the <a href="/docs">Documentation Portal</a>.</p>`
+    }));
+  }
+  const cleanTitle = fileName.replace(".md", "").replace(/_/g, " ");
+  res.send(renderDocPage({
+    title: `AdShield — ${cleanTitle}`,
+    subtitle: `Engineering specification document: ${fileName}`,
+    badge: "TECHNICAL REFERENCE",
+    contentHtml: formatMarkdownToHtml(content)
+  }));
+});
+
+// Pricing shortcut: GET /pricing -> redirect to /#pricing
+app.get("/pricing", (req, res) => {
+  res.redirect("/#pricing");
 });
 
 // --- Public Download Page: GET /download ---
@@ -338,26 +576,49 @@ app.get("/download", (req, res) => {
   <title>Download AdShield for Android</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; padding: 40px 8%; line-height: 1.6; }
-    .container { max-width: 680px; margin: auto; background: white; padding: 40px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
-    h1 { margin-top: 0; color: #005ac1; }
-    .badge { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 6px; font-weight: bold; font-size: 13px; margin-bottom: 20px; }
-    .meta-box { background: #f1f5f9; padding: 18px; border-radius: 10px; margin: 20px 0; font-size: 14px; }
+    :root { --primary: #005ac1; --bg: #f8fafc; --text: #0f172a; --card: #ffffff; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0b1120; --text: #f8fafc; --card: #131d35; --primary: #38bdf8; }
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; line-height: 1.6; }
+    .nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 8%; background: var(--card); border-bottom: 1px solid rgba(148,163,184,0.2); }
+    .logo { font-size: 22px; font-weight: 800; color: var(--primary); text-decoration: none; display: flex; align-items: center; gap: 8px; }
+    .nav-links a { margin-left: 20px; color: var(--text); text-decoration: none; font-weight: 500; font-size: 14.5px; }
+    .nav-links a:hover { color: var(--primary); }
+    .container { max-width: 680px; margin: 40px auto; background: var(--card); padding: 40px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.06); border: 1px solid rgba(148,163,184,0.25); }
+    h1 { margin-top: 0; color: var(--primary); }
+    .badge { display: inline-block; background: rgba(2,132,199,0.15); color: #0284c7; padding: 4px 12px; border-radius: 6px; font-weight: bold; font-size: 13px; margin-bottom: 20px; }
+    .meta-box { background: rgba(148,163,184,0.1); padding: 18px; border-radius: 10px; margin: 20px 0; font-size: 14px; }
     .meta-box div { margin-bottom: 6px; }
-    .hash { font-family: monospace; word-break: break-all; color: #475569; font-size: 12px; }
-    .btn { display: block; text-align: center; background: #005ac1; color: white; padding: 16px; border-radius: 10px; font-size: 18px; font-weight: bold; text-decoration: none; margin: 24px 0; }
+    .hash { font-family: monospace; word-break: break-all; color: #64748b; font-size: 12px; }
+    .btn { display: block; text-align: center; background: #005ac1; color: white; padding: 16px; border-radius: 10px; font-size: 18px; font-weight: bold; text-decoration: none; margin: 24px 0; transition: 0.2s; }
     .btn:hover { background: #004291; }
-    ol { padding-left: 20px; font-size: 14px; color: #475569; }
+    ol { padding-left: 20px; font-size: 14px; color: #64748b; }
     li { margin-bottom: 8px; }
+    .footer { background: var(--card); border-top: 1px solid rgba(148,163,184,0.2); padding: 36px 8%; text-align: center; font-size: 14px; color: #64748b; margin-top: 60px; }
+    .footer a { color: #64748b; margin: 0 10px; text-decoration: none; }
+    .footer a:hover { color: var(--primary); }
   </style>
 </head>
 <body>
+  <div class="nav">
+    <a href="/" class="logo"><img src="/images/adshield_icon.png" width="34" height="34" style="border-radius:8px; vertical-align:middle;"> AdShield</a>
+    <div class="nav-links">
+      <a href="/#features">Features</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="/download">Download</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/docs">Docs</a>
+      <a href="/admin">Owner Portal</a>
+    </div>
+  </div>
+
   <div class="container">
-    <a href="/" style="color:#005ac1; text-decoration:none; font-weight:500;">← Back to AdShield</a>
+    <a href="/" style="color:var(--primary); text-decoration:none; font-weight:600;">← Back to AdShield Overview</a>
     <div style="display:flex; align-items:center; gap:16px; margin-top:20px; margin-bottom:16px;">
       <img src="/images/adshield_icon.png" width="56" height="56" style="border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
       <div>
-        <h1 style="margin:0; font-size:26px; color:#005ac1;">Download AdShield</h1>
+        <h1 style="margin:0; font-size:26px; color:var(--primary);">Download AdShield</h1>
         <span class="badge" style="margin-top:6px; margin-bottom:0;">OFFICIAL STABLE RELEASE</span>
       </div>
     </div>
@@ -383,6 +644,20 @@ app.get("/download", (req, res) => {
 
     <div style="font-size:12px; color:#94a3b8; margin-top:24px; text-align:center;">
       Every official APK is signed with AdShield's production release key. Never install APKs from unverified third-party sources.
+    </div>
+  </div>
+
+  <div class="footer">
+    <p style="font-weight:600; margin-bottom:6px;">© 2026 AdShield — Private, Native Android Threat & Ad Defense.</p>
+    <p style="font-size:13px; color:#64748b; margin-top:0;">Built native for Android 8.0+ (API 26+). Absolute Zero-Surveillance Architecture.</p>
+    <div style="display:flex; justify-content:center; gap:16px; flex-wrap:wrap; margin-top:16px;">
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/security">Security Model</a>
+      <a href="/limitations">Android Transparency</a>
+      <a href="/releases">Release Notes</a>
+      <a href="/docs">Documentation Portal</a>
+      <a href="/download">Download APK</a>
+      <a href="/admin">Private Owner Admin</a>
     </div>
   </div>
 </body>

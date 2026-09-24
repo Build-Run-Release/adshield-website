@@ -158,9 +158,46 @@ async function runTests() {
 
     const publicAfterRestore = await makeRequest("/api/v1/releases/latest");
     assert.strictEqual(publicAfterRestore.statusCode, 200);
-    console.log("   ✓ Release restored to STABLE successfully.");
+    // 8. Public Paystack Configuration Test
+    console.log("8. Testing Public Paystack Configuration & Custom Keys...");
+    const paystackConfigRes = await makeRequest("/api/v1/licenses/paystack/config");
+    assert.strictEqual(paystackConfigRes.statusCode, 200);
+    assert.strictEqual(paystackConfigRes.json.status, "success");
+    assert.ok(paystackConfigRes.json.publicKey);
+    assert.strictEqual(paystackConfigRes.json.currency, "NGN");
+    assert.strictEqual(paystackConfigRes.json.plans.MONTHLY.amountNaira, 1200);
+    assert.strictEqual(paystackConfigRes.json.plans.YEARLY.amountNaira, 8500);
+    assert.strictEqual(paystackConfigRes.json.plans.LIFETIME.amountNaira, 18000);
 
-    console.log("\nALL SERVER, PRIVACY, PAYSTACK, AND TELEMETRY TESTS PASSED (7/7)!\n");
+    // Test with custom user-provided public key
+    const customKeyRes = await makeRequest("/api/v1/licenses/paystack/initialize", {
+      method: "POST",
+      headers: { "x-paystack-public-key": "pk_test_custom_user_key_7788" }
+    }, {
+      plan: "YEARLY",
+      deviceInstallId: "device_custom_key_01",
+      email: "owner@test.com"
+    });
+    assert.strictEqual(customKeyRes.statusCode, 200);
+    assert.strictEqual(customKeyRes.json.data.publicKey, "pk_test_custom_user_key_7788");
+    console.log("   ✓ Paystack config and custom public key support verified.");
+
+    // 9. Documentation and Footer Links 200 OK Verification
+    console.log("9. Testing All Public Footer Links & Documentation Pages (0 Broken Links)...");
+    const footerRoutes = ["/privacy", "/security", "/limitations", "/releases", "/docs", "/download", "/docs/ARCHITECTURE.md"];
+    for (const route of footerRoutes) {
+      const pageRes = await makeRequest(route);
+      assert.strictEqual(pageRes.statusCode, 200, `Expected ${route} to return 200 OK`);
+      assert.ok(pageRes.data.includes("AdShield"), `Expected ${route} to contain AdShield layout`);
+    }
+
+    // Pricing redirect test
+    const pricingRes = await makeRequest("/pricing");
+    assert.strictEqual(pricingRes.statusCode, 302);
+    assert.strictEqual(pricingRes.headers.location, "/#pricing");
+    console.log("   ✓ All footer pages and documentation links return HTTP 200 with rich content.");
+
+    console.log("\nALL SERVER, PRIVACY, PAYSTACK, AND TELEMETRY TESTS PASSED (9/9)!\n");
 
   } finally {
     server.close();

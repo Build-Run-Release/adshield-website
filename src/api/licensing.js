@@ -231,9 +231,20 @@ function licensingApiRouter(express) {
     });
   });
 
+  // GET /api/v1/licenses/paystack/config - Public Paystack Configuration for Client Apps
+  router.get("/paystack/config", (req, res) => {
+    res.json({
+      status: "success",
+      publicKey: PAYSTACK_PUBLIC_KEY,
+      isLive: PAYSTACK_PUBLIC_KEY.startsWith("pk_live_"),
+      currency: "NGN",
+      plans: PAYSTACK_PLANS
+    });
+  });
+
   // POST /api/v1/licenses/paystack/initialize
   router.post("/paystack/initialize", (req, res) => {
-    const { plan, deviceInstallId, email } = req.body;
+    const { plan, deviceInstallId, email, publicKey: clientKey } = req.body;
     if (!plan || !PAYSTACK_PLANS[plan]) {
       return res.status(400).json({
         error: "INVALID_PLAN",
@@ -245,11 +256,12 @@ function licensingApiRouter(express) {
       return res.status(400).json({ error: "deviceInstallId is required" });
     }
 
+    const activePublicKey = clientKey || req.headers["x-paystack-public-key"] || PAYSTACK_PUBLIC_KEY;
     const selectedPlan = PAYSTACK_PLANS[plan];
     const reference = `adshield_${plan.toLowerCase()}_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
     const userEmail = email || `user_${deviceInstallId.substring(0, 8)}@adshield.internal`;
 
-    // Paystack checkout payload
+    // Paystack standard checkout payload
     res.json({
       status: "success",
       message: "Paystack transaction initialized",
@@ -260,7 +272,7 @@ function licensingApiRouter(express) {
         amountNaira: selectedPlan.amountNaira,
         currency: "NGN",
         email: userEmail,
-        publicKey: PAYSTACK_PUBLIC_KEY,
+        publicKey: activePublicKey,
         channels: ["card", "bank", "ussd", "qr", "mobile_money", "bank_transfer"],
         authorizationUrl: `https://checkout.paystack.com/${reference}`
       }
