@@ -14,8 +14,8 @@ class ReleaseStore {
         minimumAndroidVersion: 26,
         releaseDate: "2026-09-24",
         downloadUrl: "/downloads/AdShield-v2.0.0.apk",
-        sha256: "be664554bdb314edddfcde64c08ba32f67c1ad1a028222fe358834f7589db83f",
-        fileSizeBytes: 2101801,
+        sha256: "a6e45daccc1d4de087123e511ec73844074a9523feacc7c65981dc21316d4873",
+        fileSizeBytes: 2113586,
         releaseNotesUrl: "/docs/RELEASE.md",
         status: "STABLE",
         changelog: "Version 2.0.0: Powerful ad & tracker suppression with 600+ network rules, advanced mobile threat intelligence database, real-time APK security inspection, and sandboxed persistent quarantine vault."
