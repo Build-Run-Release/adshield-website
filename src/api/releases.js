@@ -7,17 +7,31 @@ class ReleaseStore {
   constructor() {
     this.releases = [
       {
+        id: "rel_200",
+        channel: "stable",
+        version: "2.0.0",
+        versionCode: 200,
+        minimumAndroidVersion: 26,
+        releaseDate: "2026-09-24",
+        downloadUrl: "/downloads/AdShield-v2.0.0.apk",
+        sha256: "be664554bdb314edddfcde64c08ba32f67c1ad1a028222fe358834f7589db83f",
+        fileSizeBytes: 2101801,
+        releaseNotesUrl: "/docs/RELEASE.md",
+        status: "STABLE",
+        changelog: "Version 2.0.0: Powerful ad & tracker suppression with 600+ network rules, advanced mobile threat intelligence database, real-time APK security inspection, and sandboxed persistent quarantine vault."
+      },
+      {
         id: "rel_100",
         channel: "stable",
         version: "1.0.0",
         versionCode: 100,
         minimumAndroidVersion: 26,
         releaseDate: "2026-09-23",
-        downloadUrl: "/download/AdShield-v1.0.0.apk",
+        downloadUrl: "/downloads/AdShield-v1.0.0.apk",
         sha256: "e0ff4c9bbc0a5e85d514d20f8c089e05fb9019b4a2d3b1d3c601aec899476462",
         fileSizeBytes: 2083609,
         releaseNotesUrl: "/docs/RELEASE.md",
-        status: "STABLE",
+        status: "RETIRED",
         changelog: "Initial commercial release: in-app Paystack subscriptions, system-wide DNS filtering, threat intelligence, and local quarantine."
       }
     ];

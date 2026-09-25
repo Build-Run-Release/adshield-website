@@ -58,7 +58,8 @@ async function runTests() {
     const relRes = await makeRequest("/api/v1/releases/latest");
     assert.strictEqual(relRes.statusCode, 200);
     assert.strictEqual(relRes.json.channel, "stable");
-    assert.strictEqual(relRes.json.version, "1.0.0");
+    assert.strictEqual(relRes.json.version, "2.0.0");
+    assert.strictEqual(relRes.json.versionCode, 200);
     assert.strictEqual(relRes.json.minimumAndroidVersion, 26);
     assert.ok(relRes.json.sha256 && relRes.json.sha256.length === 64);
     console.log("   ✓ Public release metadata verified successfully.");
@@ -137,7 +138,7 @@ async function runTests() {
 
     // 7. Release Management & Revocation Test
     console.log("7. Testing Release Promotion & Revocation Flow...");
-    const revokeRes = await makeRequest("/admin/api/releases/rel_100/revoke", {
+    const revokeRes = await makeRequest("/admin/api/releases/rel_200/revoke", {
       method: "POST",
       headers: authHeaders
     });
@@ -150,7 +151,7 @@ async function runTests() {
     console.log("   ✓ Emergency release revocation instantly stopped public distribution!");
 
     // Restore to STABLE
-    const restoreRes = await makeRequest("/admin/api/releases/rel_100/promote", {
+    const restoreRes = await makeRequest("/admin/api/releases/rel_200/promote", {
       method: "POST",
       headers: authHeaders
     }, { status: "STABLE" });
@@ -159,6 +160,7 @@ async function runTests() {
 
     const publicAfterRestore = await makeRequest("/api/v1/releases/latest");
     assert.strictEqual(publicAfterRestore.statusCode, 200);
+    assert.strictEqual(publicAfterRestore.json.version, "2.0.0");
     // 8. Public Paystack Configuration Test
     console.log("8. Testing Public Paystack Configuration & Custom Keys...");
     const paystackConfigRes = await makeRequest("/api/v1/licenses/paystack/config");
